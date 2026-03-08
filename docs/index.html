@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gerenciamento de Material Rodante — Vale Base Metals </title>
+<title>Material Rodante — Vale Base Metals v2</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -517,10 +517,10 @@
   <div class="grid-2" style="margin-bottom:20px">
     <div class="card">
       <div class="card-title">
-        Desgaste médio por componente — Pit Viper DR416i
-        <span style="font-size:9px;color:var(--muted)">% do limite · n=12</span>
+        Ranking de condição — melhor → pior
+        <span style="font-size:9px;color:var(--muted)">média simples de todos os componentes</span>
       </div>
-      <canvas id="chartComponentPV"></canvas>
+      <div id="rankingList"></div>
     </div>
     <div class="card">
       <div class="card-title">
@@ -856,35 +856,61 @@ Chart.defaults.font.family = 'IBM Plex Mono';
 Chart.defaults.font.size = 11;
 const gridColor = 'rgba(41,171,226,.07)';
 
-// ======================== KPI: avg wear ========================
+// ======================== RANKING DE CONDIÇÃO ========================
+// Média simples de todos os componentes por equipamento (menor = melhor)
+const rankingData = pvData.tags.map((tag, i) => {
+  const vals = Object.values(pvData.wear).map(arr => arr[i]);
+  const media = vals.reduce((a,b) => a+b, 0) / vals.length;
+  const pior  = Math.max(...vals);
+  return { tag, media: +media.toFixed(1), pior, horim: pvData.horimetro[i], roletes: pvData.roletes[i] };
+}).sort((a, b) => a.media - b.media); // menor desgaste = melhor posição
+
+const rankList = document.getElementById('rankingList');
+rankList.style.cssText = 'display:flex;flex-direction:column;gap:6px;padding-top:4px';
+
+rankingData.forEach((d, idx) => {
+  const pos      = idx + 1;
+  const isTop3   = pos <= 3;
+  const isBottom3= pos >= rankingData.length - 2;
+  const barColor = wearColor(d.media);
+  const medal    = pos === 1 ? '🥇' : pos === 2 ? '🥈' : pos === 3 ? '🥉' : '';
+  const sapFlag  = d.pior >= SAP_THRESHOLD;
+
+  const row = document.createElement('div');
+  row.style.cssText = `
+    display:flex; align-items:center; gap:10px;
+    padding:7px 10px; border-radius:5px;
+    background:${isBottom3 ? 'rgba(224,82,82,.06)' : isTop3 ? 'rgba(41,193,138,.05)' : 'var(--surface2)'};
+    border:1px solid ${isBottom3 ? 'rgba(224,82,82,.2)' : isTop3 ? 'rgba(41,193,138,.15)' : 'var(--border2)'};
+    transition: background .15s;
+  `;
+  row.innerHTML = `
+    <!-- posição -->
+    <div style="font-family:var(--mono);font-size:11px;font-weight:700;min-width:22px;text-align:center;color:${isBottom3?'var(--danger)':isTop3?'var(--ok)':'var(--muted)'}">
+      ${medal || pos}
+    </div>
+    <!-- tag -->
+    <div style="font-family:var(--mono);font-size:11px;font-weight:700;min-width:108px;color:var(--blue-light)">${d.tag}</div>
+    <!-- barra -->
+    <div style="flex:1;height:6px;background:var(--surface);border-radius:3px;overflow:visible;position:relative">
+      <div style="height:100%;width:${Math.min(d.media,100)}%;background:${barColor};border-radius:3px"></div>
+      <!-- marcador SAP 70% -->
+      <div style="position:absolute;top:-4px;bottom:-4px;left:70%;width:1px;background:rgba(240,180,41,.5)"></div>
+    </div>
+    <!-- média -->
+    <div style="font-family:var(--mono);font-size:12px;font-weight:700;min-width:40px;text-align:right;color:${barColor}">${d.media}%</div>
+    <!-- SAP flag -->
+    <div style="min-width:30px;text-align:right;font-family:var(--mono);font-size:9px;color:${sapFlag?'#f0b429':'rgba(255,255,255,.1)'}">
+      ${sapFlag ? 'SAP' : '—'}
+    </div>
+  `;
+  rankList.appendChild(row);
+});
+
+// ======================== KPI: avg wear (mantido para uso interno) ========================
 const avgWear = {};
 Object.keys(pvData.wear).forEach(k => {
   avgWear[k] = pvData.wear[k].reduce((a,b)=>a+b,0) / pvData.wear[k].length;
-});
-
-// ======================== CHART: Component avg ========================
-new Chart(document.getElementById('chartComponentPV'), {
-  type: 'bar',
-  data: {
-    labels: ['ELO','MOTRIZ','SAPATA','BUCHA','ROL.INF','PASSO','RODA GUIA'],
-    datasets: [{
-      data: ['ELO','MOTRIZ','SAPATA','BUCHA','ROLETE_INFERIOR','PASSO','RODA_GUIA'].map(k => +avgWear[k].toFixed(1)),
-      backgroundColor: ['ELO','MOTRIZ','SAPATA','BUCHA','ROLETE_INFERIOR','PASSO','RODA_GUIA'].map(k => wearColor(avgWear[k])),
-      borderRadius: 4, borderSkipped: false,
-    }]
-  },
-  options: {
-    responsive:true,
-    plugins:{
-      legend:{display:false},
-      tooltip:{callbacks:{label: ctx => `${ctx.raw}% do limite (média)`}}
-    },
-    scales:{
-      x:{ticks:{color:'#5a8fa8'},grid:{color:gridColor}},
-      y:{ticks:{color:'#5a8fa8',callback:v=>v+'%'},grid:{color:gridColor},suggestedMax:80,
-         title:{display:true,text:'% do limite',color:'#5a8fa8',font:{size:10}}}
-    }
-  }
 });
 
 // ======================== CHART: Roletes ========================
