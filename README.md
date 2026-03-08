@@ -34,3 +34,51 @@ Cards interpretativos com diagnósticos por equipamento
 
 Comparação do desgaste entre Lado Cabine e Lado Não-Cabine
 Identificação de desgaste desigual (indicador de tensionamento irregular, operação em curvas ou piso inclinado)
+📊 Lógica de Cálculo
+% de Desgaste
+Componentes decrescentes (ELO, MOTRIZ, SAPATA, BUCHA, ROLETE INFERIOR):
+  % desgaste = (Valor_Novo - Medição) / (Valor_Novo - Limite) × 100
+
+Componentes crescentes (PASSO DA ESTEIRA, RODA GUIA):
+  % desgaste = (Medição - Valor_Novo) / (Limite - Valor_Novo) × 100
+Taxa de Desgaste
+Taxa (%/1000h) = Δ% desgaste / Δ horímetro × 1000
+Calculada entre a primeira e a última medição disponível por equipamento/lado.
+Roletes Danificados (frota)
+Total = Σ (LC + LNC) da última inspeção de cada TAG
+Considera apenas a inspeção mais recente de cada equipamento, somando ambos os lados.
+Assimetria
+Diferença = |% desgaste LC - % desgaste LNC|
+Alerta acionado quando diferença > 10 pontos percentuais
+
+🎨 Design
+O dashboard segue a identidade visual da Vale Base Metals:
+ElementoCorUsoHeader / primária#29ABE2Fundo do cabeçalho, destaque principalNavegação#1a87b8Barra de abasFundo#07192aBackground dark navyAlerta crítico#e05252Desgaste > 80%Atenção#f0b429Desgaste 50–80%Normal#6dcbeeDesgaste < 25%
+Tipografia: IBM Plex Sans (corpo) + IBM Plex Mono (valores e métricas)
+
+📁 Estrutura do Projeto
+/
+├── dashboard_material_rodante.html   # Dashboard completo (single-file)
+├── README.md                          # Este arquivo
+└── dados/
+    ├── Ger__de_Material_Rodante_GD.csv   # Dados de medição das inspeções
+    └── Parâmetros.csv                     # Limites de desgaste por componente/modelo
+
+📂 Formato dos Dados de Entrada
+Ger__de_Material_Rodante_GD.csv
+CampoDescriçãoTAGIdentificador do equipamentoMODELOPit Viper/DR416i ou FlexiROC D65OMNúmero da ordem de manutençãoDATAData da inspeção (MM/DD/YYYY)HORÍMETROHoras de operação do equipamentoLADOLC (lado cabine) ou LNC (lado não cabine)RODA GUIA, ELO, MOTRIZ...Medições em mm de cada componenteROLETES DANIFICADOS (VISUAL)Contagem visual de roletes danificados
+Parâmetros.csv
+CampoDescriçãoComponenteNome do componenteModeloModelo do equipamentoNovoMedição de referência (componente novo)Limite de desgasteMedição limite antes da substituição
+
+🚀 Como Usar
+Visualização local
+bash# Basta abrir o arquivo no navegador
+open dashboard_material_rodante.html
+# ou
+xdg-open dashboard_material_rodante.html
+Deploy gratuito
+Opção 1 — GitHub Pages
+
+Faça o commit do dashboard_material_rodante.html na raiz ou pasta /docs
+Acesse: Settings → Pages → Source: branch main, pasta /root ou /docs
+Acesse via https://<seu-usuario>.github.io/<repositorio>
