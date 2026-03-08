@@ -3,207 +3,493 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Material Rodante — Vale Base Metals</title>
+<title>Material Rodante — Vale Base Metals v2</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;600;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
+  /* ===================== TOKENS ===================== */
   :root {
-    /* Vale Base Metals — azul site oficial */
-    --vale-blue:        #29ABE2;
-    --vale-blue-dark:   #1a87b8;
-    --vale-blue-deeper: #0e5f85;
-    --vale-blue-light:  #6dcbee;
-    --vale-navy:        #0a2a3d;
+    --blue:        #29ABE2;
+    --blue-dark:   #1a87b8;
+    --blue-deeper: #0e5f85;
+    --blue-light:  #6dcbee;
+    --navy:        #0a2a3d;
 
-    --bg:      #07192a;
-    --surface: #0c2236;
+    --bg:       #07192a;
+    --surface:  #0c2236;
     --surface2: #112b42;
-    --border:  #1a3d57;
-    --text:    #e8f4fb;
-    --muted:   #6aaac8;
-    --accent:  var(--vale-blue);
+    --surface3: #172f4a;
+    --border:   rgba(41,171,226,.18);
+    --border2:  rgba(41,171,226,.08);
+
+    --text:     #e8f4fb;
+    --text2:    #a8cfe0;
+    --muted:    #5a8fa8;
+
     --danger:  #e05252;
     --warn:    #f0b429;
     --ok:      #29c18a;
-    --blue:    var(--vale-blue-light);
+
     --mono: 'IBM Plex Mono', monospace;
     --sans: 'IBM Plex Sans', sans-serif;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: var(--sans); min-height: 100vh; }
 
+    /* Severity thresholds */
+    --t-critical: 80;
+    --t-warn:     50;
+    --t-low:      25;
+
+    /* Estimated remaining life before intervention (hours) */
+    --life-critical: 500;
+    --life-warn:     2000;
+  }
+
+  /* ===================== RESET ===================== */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    /* subtle grid texture */
+    background-image:
+      linear-gradient(rgba(41,171,226,.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(41,171,226,.025) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* ===================== HEADER ===================== */
   header {
+    background: linear-gradient(90deg, #0f2d45 0%, #0d3654 100%);
     border-bottom: 1px solid var(--border);
     padding: 14px 32px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: #29ABE2;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(8px);
   }
-  .header-left { display: flex; align-items: center; gap: 16px; }
-  .title { font-size: 20px; font-weight: 700; color: #fff; }
-  .subtitle { font-size: 12px; color: rgba(255,255,255,.75); font-family: var(--mono); }
-  .badge { font-family: var(--mono); font-size: 11px; padding: 3px 10px; border-radius: 20px; }
-  .badge-ok { background: rgba(41,193,138,.15); color: #29c18a; border: 1px solid rgba(41,193,138,.35); }
-  .badge-warn { background: rgba(240,180,41,.15); color: #f0b429; border: 1px solid rgba(240,180,41,.35); }
-  .badge-danger { background: rgba(224,82,82,.15); color: var(--danger); border: 1px solid rgba(224,82,82,.3); }
+  .header-left { display: flex; align-items: center; gap: 20px; }
+  .logo-wrap {
+    display: flex; align-items: center; gap: 10px;
+    padding-right: 20px;
+    border-right: 1px solid var(--border);
+  }
+  .logo-text { display: flex; flex-direction: column; line-height: 1; }
+  .logo-vale { font-size: 17px; font-weight: 700; color: #fff; letter-spacing: 2.5px; }
+  .logo-sub  { font-size: 8px; color: rgba(255,255,255,.55); letter-spacing: 3px; text-transform: uppercase; margin-top: 3px; }
+  .header-title { font-size: 15px; font-weight: 600; color: var(--text); }
+  .header-meta  { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-top: 2px; }
 
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .badge {
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    padding: 4px 10px; border-radius: 20px; letter-spacing: .5px;
+  }
+  .badge-danger { background: rgba(224,82,82,.15); color: var(--danger); border: 1px solid rgba(224,82,82,.35); }
+  .badge-warn   { background: rgba(240,180,41,.12); color: var(--warn);   border: 1px solid rgba(240,180,41,.3); }
+  .badge-ok     { background: rgba(41,193,138,.12); color: var(--ok);     border: 1px solid rgba(41,193,138,.3); }
+
+  /* timestamp */
+  .ts-pill {
+    font-family: var(--mono); font-size: 10px; color: var(--muted);
+    background: var(--surface2); border: 1px solid var(--border2);
+    padding: 4px 10px; border-radius: 20px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .ts-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); animation: pulse 2s infinite; }
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: .4; transform: scale(.7); }
+  }
+
+  /* ===================== NAV ===================== */
   .nav-tabs {
-    display: flex; gap: 0; border-bottom: 1px solid var(--border);
-    padding: 0 32px; background: #1a87b8;
+    display: flex; gap: 0;
+    padding: 0 32px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border2);
+    overflow-x: auto;
+    scrollbar-width: none;
   }
-  .tab { padding: 11px 20px; font-size: 13px; font-weight: 600; cursor: pointer; color: rgba(255,255,255,.65); border-bottom: 2px solid transparent; transition: all .2s; letter-spacing: .3px; }
-  .tab:hover { color: #fff; }
-  .tab.active { color: #fff; border-bottom-color: #fff; }
+  .nav-tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    padding: 12px 20px; font-size: 12px; font-weight: 600; cursor: pointer;
+    color: var(--muted); border-bottom: 2px solid transparent;
+    transition: all .2s; letter-spacing: .6px; text-transform: uppercase;
+    white-space: nowrap; font-family: var(--mono);
+  }
+  .tab:hover { color: var(--blue-light); }
+  .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
 
+  /* ===================== LAYOUT ===================== */
   .main { padding: 28px 32px; }
-  .page { display: none; }
+  .page { display: none; animation: fadeIn .2s ease; }
   .page.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
-  /* KPI cards */
-  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  /* ===================== SECTION TITLE ===================== */
+  .section-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1.5px; color: var(--muted); font-family: var(--mono);
+    margin-bottom: 16px; padding-left: 12px;
+    border-left: 2px solid var(--blue);
+  }
+
+  /* ===================== KPI CARDS ===================== */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 16px; margin-bottom: 28px; }
   .kpi-card {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-    padding: 18px 20px; position: relative; overflow: hidden;
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 18px 20px; position: relative; overflow: hidden;
+    transition: border-color .2s, transform .15s;
+    cursor: default;
   }
+  .kpi-card:hover { border-color: var(--border); transform: translateY(-1px); }
   .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
-  .kpi-card.danger::before { background: var(--danger); }
-  .kpi-card.warn::before { background: var(--warn); }
-  .kpi-card.ok::before { background: var(--vale-blue); }
-  .kpi-card.info::before { background: var(--vale-blue-light); }
-  .kpi-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-family: var(--mono); margin-bottom: 8px; }
-  .kpi-value { font-size: 32px; font-weight: 700; font-family: var(--mono); line-height: 1; }
+  .kpi-card.danger::before { background: linear-gradient(90deg, var(--danger), #ff8080); }
+  .kpi-card.warn::before   { background: linear-gradient(90deg, var(--warn), #ffd87a); }
+  .kpi-card.ok::before     { background: linear-gradient(90deg, var(--blue), var(--blue-light)); }
+  .kpi-card.info::before   { background: linear-gradient(90deg, #2e4a7a, var(--blue)); }
+
+  .kpi-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1.2px; font-family: var(--mono); margin-bottom: 10px; }
+  .kpi-value { font-size: 30px; font-weight: 700; font-family: var(--mono); line-height: 1; }
   .kpi-value.danger { color: var(--danger); }
-  .kpi-value.warn { color: var(--warn); }
-  .kpi-value.ok { color: var(--vale-blue); }
-  .kpi-value.info { color: var(--vale-blue-light); }
-  .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 6px; }
-
-  /* Grid layouts */
-  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 20px; }
-
-  .card {
-    background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px;
+  .kpi-value.warn   { color: var(--warn); }
+  .kpi-value.ok     { color: var(--blue); }
+  .kpi-value.info   { color: var(--blue-light); }
+  .kpi-sub  { font-size: 11px; color: var(--muted); margin-top: 8px; line-height: 1.4; }
+  .kpi-delta {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-family: var(--mono); font-size: 10px;
+    margin-top: 6px; padding: 2px 6px; border-radius: 4px;
   }
-  .card-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 16px; font-family: var(--mono); }
+  .kpi-delta.up   { background: rgba(224,82,82,.12); color: var(--danger); }
+  .kpi-delta.down { background: rgba(41,193,138,.12); color: var(--ok); }
+  .kpi-delta.neu  { background: rgba(90,143,168,.12); color: var(--muted); }
 
-  /* Alert table */
+  /* ===================== CARDS ===================== */
+  .card {
+    background: var(--surface); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 20px; margin-bottom: 20px;
+  }
+  .card-title {
+    font-size: 10px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1.2px; color: var(--muted); margin-bottom: 16px;
+    font-family: var(--mono);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+
+  /* ===================== GRIDS ===================== */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+
+  /* ===================== ALERT TABLE ===================== */
   .alert-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  .alert-table th { text-align: left; padding: 8px 12px; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .8px; border-bottom: 1px solid var(--border); font-family: var(--mono); font-weight: 400; }
-  .alert-table td { padding: 10px 12px; border-bottom: 1px solid rgba(48,54,61,.5); vertical-align: middle; }
+  .alert-table th {
+    text-align: left; padding: 8px 12px;
+    font-size: 10px; color: var(--muted); text-transform: uppercase;
+    letter-spacing: 1px; border-bottom: 1px solid var(--border);
+    font-family: var(--mono); font-weight: 400;
+  }
+  .alert-table td { padding: 10px 12px; border-bottom: 1px solid var(--border2); vertical-align: middle; }
   .alert-table tr:last-child td { border-bottom: none; }
-  .alert-table tr:hover td { background: rgba(255,255,255,.02); }
-  .tag-pill { font-family: var(--mono); font-size: 12px; background: var(--surface2); padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border); }
+  .alert-table tr:hover td { background: rgba(41,171,226,.03); }
 
-  /* Wear bar */
+  /* tag pill */
+  .tag-pill {
+    font-family: var(--mono); font-size: 11px;
+    background: var(--surface2); padding: 3px 8px; border-radius: 4px;
+    border: 1px solid var(--border); color: var(--blue-light); font-weight: 600;
+  }
+
+  /* ===================== WEAR BAR ===================== */
   .wear-bar-wrap { display: flex; align-items: center; gap: 10px; }
   .wear-bar-bg { flex: 1; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
-  .wear-bar-fill { height: 100%; border-radius: 3px; transition: width .3s; }
-  .wear-pct { font-family: var(--mono); font-size: 12px; min-width: 40px; text-align: right; }
+  .wear-bar-fill { height: 100%; border-radius: 3px; transition: width .4s ease; }
+  .wear-pct { font-family: var(--mono); font-size: 12px; font-weight: 600; min-width: 48px; text-align: right; }
 
-  /* Heatmap */
+  /* ===================== REMAINING LIFE INDICATOR ===================== */
+  .life-bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .life-bar-bg { flex: 1; height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden; }
+  .life-bar-fill { height: 100%; border-radius: 2px; }
+  .life-label { font-family: var(--mono); font-size: 10px; color: var(--muted); min-width: 60px; text-align: right; }
+
+  /* ===================== HEATMAP ===================== */
   .heatmap-wrap { overflow-x: auto; }
-  .heatmap { border-collapse: collapse; font-size: 12px; font-family: var(--mono); }
-  .heatmap th { padding: 6px 12px; color: var(--muted); font-weight: 400; font-size: 11px; text-align: center; white-space: nowrap; }
-  .heatmap td { padding: 6px 12px; text-align: center; border: 1px solid rgba(48,54,61,.5); font-size: 12px; }
-  .heatmap td.tag-cell { text-align: left; color: var(--text); background: var(--surface2); font-weight: 600; white-space: nowrap; }
-  .cell-ok { background: rgba(41,171,226,.12); color: #6dcbee; }
-  .cell-low { background: rgba(41,171,226,.22); color: #29ABE2; }
-  .cell-med { background: rgba(240,180,41,.18); color: #f0b429; }
-  .cell-high { background: rgba(224,82,82,.2); color: var(--danger); }
-  .cell-crit { background: rgba(224,82,82,.5); color: #fff; font-weight: 700; }
+  .heatmap { border-collapse: collapse; font-size: 12px; font-family: var(--mono); width: 100%; }
+  .heatmap th {
+    padding: 8px 12px; color: var(--muted); font-weight: 600;
+    font-size: 10px; text-align: center; white-space: nowrap;
+    border-bottom: 1px solid var(--border); letter-spacing: .8px; text-transform: uppercase;
+  }
+  .heatmap th.sort-asc::after  { content: ' ↑'; color: var(--blue); }
+  .heatmap th.sort-desc::after { content: ' ↓'; color: var(--blue); }
+  .heatmap th:hover { color: var(--blue-light); cursor: pointer; }
+  .heatmap td { padding: 7px 12px; text-align: center; border: 1px solid var(--border2); font-size: 12px; transition: opacity .15s; }
+  .heatmap td.tag-cell {
+    text-align: left; color: var(--text); background: var(--surface2);
+    font-weight: 600; white-space: nowrap; cursor: default;
+    font-size: 11px;
+  }
+  .heatmap td.horim-cell { color: var(--muted); font-size: 10px; background: var(--surface2); }
+  .heatmap tr:hover td { opacity: .85; }
+  .cell-ok   { background: rgba(41,171,226,.10); color: #6dcbee; }
+  .cell-low  { background: rgba(41,171,226,.22); color: #29ABE2; }
+  .cell-med  { background: rgba(240,180,41,.16); color: #f0b429; }
+  .cell-high { background: rgba(224,82,82,.18); color: var(--danger); }
+  .cell-crit { background: rgba(224,82,82,.45); color: #fff; font-weight: 700; }
 
-  /* Asymmetry section */
-  .asym-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(48,54,61,.5); font-size: 13px; }
+  /* ===================== FLEET CARDS ===================== */
+  .fleet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+  .fleet-card {
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 16px;
+    transition: border-color .2s, transform .15s;
+    position: relative; overflow: hidden;
+  }
+  .fleet-card:hover { border-color: var(--border); transform: translateY(-2px); }
+  .fleet-card::after {
+    content: ''; position: absolute;
+    top: 0; left: 0; right: 0; height: 1px;
+    background: var(--status-color, var(--muted));
+    opacity: .6;
+  }
+  .fleet-tag { font-family: var(--mono); font-size: 12px; font-weight: 700; margin-bottom: 2px; }
+  .fleet-model { font-size: 10px; color: var(--muted); margin-bottom: 12px; font-family: var(--mono); }
+  .fleet-comp-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .fleet-comp-name { font-size: 9px; color: var(--muted); min-width: 70px; text-transform: uppercase; letter-spacing: .4px; }
+  .fleet-bar-bg { flex: 1; height: 4px; background: var(--bg); border-radius: 2px; overflow: hidden; }
+  .fleet-bar-fill { height: 100%; border-radius: 2px; }
+  .fleet-pct { font-family: var(--mono); font-size: 10px; min-width: 30px; text-align: right; font-weight: 600; }
+  .fleet-footer {
+    margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border2);
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 10px; color: var(--muted); font-family: var(--mono);
+  }
+
+  /* ===================== ASYMMETRY ===================== */
+  .asym-row {
+    display: flex; align-items: center; gap: 12px; padding: 10px 0;
+    border-bottom: 1px solid var(--border2); font-size: 12px;
+  }
   .asym-row:last-child { border-bottom: none; }
-  .asym-tag { font-family: var(--mono); font-size: 12px; background: var(--surface2); padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border); min-width: 100px; }
-  .asym-comp { color: var(--muted); font-size: 12px; min-width: 120px; }
-  .asym-val { font-family: var(--mono); font-size: 12px; min-width: 50px; }
-  .asym-diff { font-family: var(--mono); font-size: 12px; font-weight: 700; min-width: 60px; }
-  .icon { font-size: 14px; }
+  .asym-tag { font-family: var(--mono); font-size: 11px; font-weight: 700; min-width: 100px; color: var(--blue-light); }
+  .asym-bars { flex: 1; }
+  .asym-side-row { display: flex; align-items: center; gap: 8px; margin-bottom: 3px; }
+  .asym-side-label { font-family: var(--mono); font-size: 9px; color: var(--muted); min-width: 28px; text-transform: uppercase; }
+  .asym-bar-bg { flex: 1; height: 5px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .asym-bar-fill { height: 100%; border-radius: 3px; }
+  .asym-val { font-family: var(--mono); font-size: 10px; min-width: 40px; text-align: right; font-weight: 600; }
+  .asym-diff { font-family: var(--mono); font-size: 11px; font-weight: 700; min-width: 55px; text-align: right; }
+
+  /* ===================== INSIGHTS PANEL ===================== */
+  .insight-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap: 16px; }
+  .insight-card {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 16px; position: relative; overflow: hidden;
+  }
+  .insight-card.danger { border-color: rgba(224,82,82,.35); }
+  .insight-card.warn   { border-color: rgba(240,180,41,.3); }
+  .insight-card.info   { border-color: rgba(41,171,226,.3); }
+  .insight-severity {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 1.5px;
+    text-transform: uppercase; margin-bottom: 8px; font-weight: 700;
+  }
+  .insight-title { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+  .insight-body  { font-size: 11px; color: var(--muted); line-height: 1.8; }
+  .insight-rec {
+    margin-top: 10px; padding: 8px 10px;
+    background: rgba(41,171,226,.06); border-radius: 4px;
+    border-left: 2px solid var(--blue);
+    font-size: 11px; color: var(--text2); font-style: italic;
+  }
+
+  /* ===================== LEGEND ===================== */
+  .legend-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--muted); font-family: var(--mono); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+
+  /* ===================== FILTER BAR ===================== */
+  .filter-bar {
+    display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; align-items: center;
+  }
+  .filter-label { font-size: 10px; color: var(--muted); font-family: var(--mono); text-transform: uppercase; letter-spacing: 1px; }
+  .filter-btn {
+    font-family: var(--mono); font-size: 10px; padding: 4px 12px; border-radius: 4px;
+    border: 1px solid var(--border); background: var(--surface2);
+    color: var(--muted); cursor: pointer; transition: all .15s; letter-spacing: .5px;
+  }
+  .filter-btn:hover  { color: var(--blue-light); border-color: var(--blue); }
+  .filter-btn.active { background: rgba(41,171,226,.1); color: var(--blue); border-color: var(--blue); }
+
+  /* ===================== SEARCH ===================== */
+  .search-input {
+    background: var(--surface2); border: 1px solid var(--border2);
+    border-radius: 4px; padding: 5px 12px; font-family: var(--mono);
+    font-size: 11px; color: var(--text); outline: none; min-width: 200px;
+    transition: border-color .15s;
+  }
+  .search-input:focus { border-color: var(--blue); }
+  .search-input::placeholder { color: var(--muted); }
+
+  /* ===================== SAP BADGE ===================== */
+  .sap-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: var(--mono); font-size: 10px; font-weight: 700;
+    padding: 3px 8px; border-radius: 4px; letter-spacing: .8px;
+    text-transform: uppercase; white-space: nowrap;
+  }
+  .sap-badge.sap-open {
+    background: rgba(41,171,226,.15); color: #29ABE2;
+    border: 1px solid rgba(41,171,226,.4);
+  }
+  .sap-badge.sap-pending {
+    background: rgba(240,180,41,.12); color: #f0b429;
+    border: 1px dashed rgba(240,180,41,.5);
+    animation: blink-border 2s infinite;
+  }
+  .sap-badge.sap-critical {
+    background: rgba(224,82,82,.15); color: #e05252;
+    border: 1px solid rgba(224,82,82,.5);
+  }
+  @keyframes blink-border {
+    0%,100% { opacity:1; } 50% { opacity:.55; }
+  }
+  .sap-threshold-line {
+    position: absolute; left: 0; right: 0; top: 0; bottom: 0;
+    pointer-events: none;
+  }
+  /* SAP demand table */
+  .sap-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .sap-table th {
+    text-align:left; padding:8px 12px;
+    font-size:10px; color:var(--muted); text-transform:uppercase;
+    letter-spacing:1px; border-bottom:1px solid var(--border);
+    font-family:var(--mono); font-weight:400;
+  }
+  .sap-table td { padding:10px 12px; border-bottom:1px solid var(--border2); vertical-align:middle; }
+  .sap-table tr:last-child td { border-bottom:none; }
+  .sap-table tr:hover td { background:rgba(41,171,226,.03); }
+
+  /* SAP counter pill on nav */
+  .tab-counter {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:16px; height:16px; border-radius:50%;
+    font-size:9px; font-weight:700; font-family:var(--mono);
+    background:rgba(240,180,41,.25); color:#f0b429;
+    margin-left:5px; vertical-align:middle;
+  }
+
+  /* ===================== EXPORT BUTTON ===================== */
+  .btn {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 1px;
+    text-transform: uppercase; padding: 5px 14px; border-radius: 4px;
+    border: 1px solid var(--border); background: var(--surface2);
+    color: var(--blue-light); cursor: pointer; transition: all .15s; font-weight: 600;
+  }
+  .btn:hover { background: rgba(41,171,226,.1); border-color: var(--blue); color: var(--blue); }
+  .btn-danger { border-color: rgba(224,82,82,.4); color: var(--danger); }
+  .btn-danger:hover { background: rgba(224,82,82,.08); border-color: var(--danger); }
+
+  /* ===================== TOOLTIP ===================== */
+  .tooltip-wrap { position: relative; display: inline-flex; }
+  .tooltip-wrap:hover .tooltip-pop { display: block; }
+  .tooltip-pop {
+    display: none; position: absolute; bottom: 130%; left: 50%; transform: translateX(-50%);
+    background: #112b42; border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px 12px; font-size: 11px; font-family: var(--mono); color: var(--text2);
+    white-space: nowrap; z-index: 999; min-width: 180px; pointer-events: none;
+    box-shadow: 0 8px 24px rgba(0,0,0,.4);
+  }
+  .tooltip-pop::after {
+    content: ''; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    border: 5px solid transparent; border-top-color: var(--border);
+  }
+
+  /* ===================== MINI SPARKLINE AREA ===================== */
+  .sparkline-row { display: flex; align-items: center; gap: 8px; }
+  .sparkline-canvas { height: 30px; }
+
+  /* ===================== SCROLL ===================== */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--blue-dark); }
 
   canvas { max-height: 280px; }
 
-  /* Fleet overview mini bars */
-  .fleet-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
-  .fleet-card {
-    background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
-    padding: 14px 16px;
-  }
-  .fleet-tag { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--accent); margin-bottom: 4px; }
-  .fleet-model { font-size: 11px; color: var(--muted); margin-bottom: 10px; }
-  .fleet-comp-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
-  .fleet-comp-name { font-size: 10px; color: var(--muted); min-width: 80px; text-transform: uppercase; letter-spacing: .3px; }
-  .fleet-bar-bg { flex: 1; height: 5px; background: var(--bg); border-radius: 3px; overflow: hidden; }
-  .fleet-bar-fill { height: 100%; border-radius: 3px; }
-  .fleet-pct { font-family: var(--mono); font-size: 10px; min-width: 32px; text-align: right; }
-
-  .section-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 16px; border-left: 3px solid var(--vale-blue); padding-left: 12px; }
-
-  .legend-row { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 16px; }
-  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
-  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
-
+  /* ===================== RESPONSIVE ===================== */
   @media (max-width: 900px) {
     .grid-2, .grid-3 { grid-template-columns: 1fr; }
-    .main { padding: 16px; }
+    .main  { padding: 16px; }
     header { padding: 14px 16px; flex-direction: column; align-items: flex-start; gap: 8px; }
-    .nav-tabs { padding: 0 16px; overflow-x: auto; }
+    .nav-tabs { padding: 0 16px; }
   }
 </style>
 </head>
 <body>
 
+<!-- ===================== HEADER ===================== -->
 <header>
   <div class="header-left">
-    <div style="display:flex;align-items:center;gap:12px;">
-      <!-- Vale Base Metals wordmark -->
-      <!-- Vale logo matching website style -->
-      <div style="display:flex;align-items:center;gap:8px;border-right:1px solid var(--border);padding-right:18px;margin-right:4px;">
-        <svg width="36" height="28" viewBox="0 0 60 46" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M0 0 L20 46 L30 22 L40 46 L60 0 L48 0 L30 36 L12 0 Z" fill="#29ABE2"/>
-        </svg>
-        <div style="display:flex;flex-direction:column;line-height:1;">
-          <span style="font-family:var(--sans);font-size:17px;font-weight:700;color:#fff;letter-spacing:2px;">VALE</span>
-          <span style="font-family:var(--sans);font-size:8px;font-weight:400;color:rgba(255,255,255,.65);letter-spacing:2.5px;text-transform:uppercase;margin-top:2px;">Base Metals</span>
-        </div>
-      </div>
-      <div>
-        <div class="title">Material Rodante — Análise de Desgaste</div>
-        <div class="subtitle">Pit Viper DR416i &amp; FlexiROC D65 · 16 equipamentos · Ago/2025–Fev/2026</div>
+    <div class="logo-wrap">
+      <svg width="32" height="25" viewBox="0 0 60 46" fill="none">
+        <path d="M0 0 L20 46 L30 22 L40 46 L60 0 L48 0 L30 36 L12 0 Z" fill="#29ABE2"/>
+      </svg>
+      <div class="logo-text">
+        <span class="logo-vale">VALE</span>
+        <span class="logo-sub">Base Metals</span>
       </div>
     </div>
+    <div>
+      <div class="header-title">Material Rodante — Análise de Desgaste</div>
+      <div class="header-meta">Pit Viper DR416i &amp; FlexiROC D65 · 16 equip. · Ago/2025–Fev/2026</div>
+    </div>
   </div>
-  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+  <div class="header-right">
+    <div class="ts-pill"><div class="ts-dot"></div>Fev/2026</div>
     <span class="badge badge-danger">2 críticos</span>
-    <span class="badge badge-warn">5 em atenção</span>
+    <span class="badge badge-warn">5 atenção</span>
     <span class="badge badge-ok">9 normais</span>
+    <span class="badge" style="background:rgba(41,171,226,.15);color:#29ABE2;border:1px solid rgba(41,171,226,.4)" id="headerSapBadge">… SAP</span>
   </div>
 </header>
 
+<!-- ===================== NAV ===================== -->
 <nav class="nav-tabs">
-  <div class="tab active" onclick="showTab('overview')">Visão Geral</div>
-  <div class="tab" onclick="showTab('heatmap')">Heatmap de Desgaste</div>
-  <div class="tab" onclick="showTab('alertas')">Alertas &amp; Críticos</div>
-  <div class="tab" onclick="showTab('taxa')">Taxa de Desgaste</div>
-  <div class="tab" onclick="showTab('assimetria')">Assimetria LC/LNC</div>
+  <div class="tab active" data-tab="overview">Visão Geral</div>
+  <div class="tab" data-tab="heatmap">Heatmap</div>
+  <div class="tab" data-tab="alertas">Alertas</div>
+  <div class="tab" data-tab="taxa">Taxa de Desgaste</div>
+  <div class="tab" data-tab="assimetria">Assimetria LC/LNC</div>
+  <div class="tab" data-tab="insights">Insights &amp; Ações</div>
+  <div class="tab" data-tab="sap">Demandas SAP <span class="tab-counter" id="sapCounter">…</span></div>
 </nav>
 
-<!-- ======= PAGE 1: OVERVIEW ======= -->
 <div class="main">
+
+<!-- ===================== PAGE: OVERVIEW ===================== -->
 <div id="page-overview" class="page active">
 
   <div class="kpi-grid">
     <div class="kpi-card danger">
-      <div class="kpi-label">Críticos (>80%)</div>
+      <div class="kpi-label">Críticos &gt;80%</div>
       <div class="kpi-value danger">2</div>
       <div class="kpi-sub">Roda Guia — substituição urgente</div>
+      <div class="kpi-delta up">↑ vs. inspeção anterior</div>
     </div>
     <div class="kpi-card warn">
-      <div class="kpi-label">Atenção (50–80%)</div>
+      <div class="kpi-label">Atenção 50–80%</div>
       <div class="kpi-value warn">5</div>
       <div class="kpi-sub">Monitorar nas próximas inspeções</div>
+      <div class="kpi-delta neu">= vs. anterior</div>
+    </div>
+    <div class="kpi-card ok">
+      <div class="kpi-label">Equipamentos Normais</div>
+      <div class="kpi-value ok">9</div>
+      <div class="kpi-sub">Dentro dos limites operacionais</div>
+      <div class="kpi-delta down">↓ 1 desde ago/2025</div>
     </div>
     <div class="kpi-card info">
       <div class="kpi-label">Roletes Danificados</div>
@@ -212,67 +498,115 @@
     </div>
     <div class="kpi-card warn">
       <div class="kpi-label">Maior Taxa Desgaste</div>
-      <div class="kpi-value warn" style="font-size:22px;">68%/1000h</div>
-      <div class="kpi-sub">SA37 — Motriz LC</div>
+      <div class="kpi-value warn" style="font-size:20px">68%<span style="font-size:14px">/1kh</span></div>
+      <div class="kpi-sub">SA37 · Motriz LC — 2× a média frota</div>
     </div>
     <div class="kpi-card ok">
-      <div class="kpi-label">Horímetro Máximo</div>
-      <div class="kpi-value ok" style="font-size:22px;">51.431h</div>
-      <div class="kpi-sub">1101PF1803 — Pit Viper</div>
+      <div class="kpi-label">Maior Horímetro</div>
+      <div class="kpi-value ok" style="font-size:18px">51.431h</div>
+      <div class="kpi-sub">1101PF1803 · Pit Viper</div>
     </div>
-    <div class="kpi-card info">
-      <div class="kpi-label">Inspeções Registradas</div>
-      <div class="kpi-value info">138</div>
-      <div class="kpi-sub">16 equipamentos · 7 meses</div>
+    <div class="kpi-card warn" id="kpiSap">
+      <div class="kpi-label">Demandas SAP ≥70%</div>
+      <div class="kpi-value warn" id="kpiSapValue">…</div>
+      <div class="kpi-sub">Componentes aguardando abertura de OS</div>
+      <div class="kpi-delta up" id="kpiSapDelta"></div>
     </div>
   </div>
 
-  <div class="grid-2">
+  <div class="grid-2" style="margin-bottom:20px">
     <div class="card">
-      <div class="card-title">Desgaste médio por componente — Pit Viper DR416i</div>
+      <div class="card-title">
+        Desgaste médio por componente — Pit Viper DR416i
+        <span style="font-size:9px;color:var(--muted)">% do limite · n=12</span>
+      </div>
       <canvas id="chartComponentPV"></canvas>
     </div>
     <div class="card">
-      <div class="card-title">Roletes visualmente danificados por TAG</div>
+      <div class="card-title">
+        Roletes visualmente danificados por TAG
+        <span style="font-size:9px;color:var(--muted)">última inspeção</span>
+      </div>
       <canvas id="chartRoletes"></canvas>
     </div>
   </div>
 
-  <div class="section-title">Visão por Equipamento</div>
+  <!-- Filter bar for fleet -->
+  <div class="filter-bar">
+    <span class="filter-label">Filtrar:</span>
+    <button class="filter-btn active" onclick="filterFleet('all',this)">Todos (12)</button>
+    <button class="filter-btn" onclick="filterFleet('danger',this)">Críticos</button>
+    <button class="filter-btn" onclick="filterFleet('warn',this)">Atenção</button>
+    <button class="filter-btn" onclick="filterFleet('ok',this)">Normais</button>
+    <input class="search-input" type="text" placeholder="Buscar TAG..." oninput="searchFleet(this.value)" style="margin-left:auto">
+  </div>
+
   <div class="fleet-grid" id="fleetGrid"></div>
 </div>
 
-<!-- ======= PAGE 2: HEATMAP ======= -->
+<!-- ===================== PAGE: HEATMAP ===================== -->
 <div id="page-heatmap" class="page">
   <div class="card">
-    <div class="card-title">Mapa de desgaste — Pit Viper DR416i (% do limite, última medição)</div>
+    <div class="card-title">
+      Mapa de desgaste — Pit Viper DR416i (% do limite, última medição)
+      <button class="btn" onclick="sortHeatmap()">Ordenar ↕</button>
+    </div>
     <div class="legend-row">
-      <div class="legend-item"><div class="legend-dot" style="background:#29ABE2"></div>0–25%</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#6dcbee"></div>25–50%</div>
+      <div class="legend-item"><div class="legend-dot" style="background:rgba(41,171,226,.3)"></div>0–25%</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#29ABE2"></div>25–50%</div>
       <div class="legend-item"><div class="legend-dot" style="background:#f0b429"></div>50–75%</div>
       <div class="legend-item"><div class="legend-dot" style="background:#e05252"></div>75–100%</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#c03030"></div>>100% CRÍTICO</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#c03030"></div>&gt;100% CRÍTICO</div>
+      <div class="legend-item" style="margin-left:auto;padding:3px 8px;background:rgba(41,171,226,.08);border:1px dashed rgba(41,171,226,.3);border-radius:4px">
+        <span style="color:#29ABE2;font-weight:700">SAP</span>&nbsp;= demanda de substituição deve ser aberta (≥70%)
+      </div>
     </div>
     <div class="heatmap-wrap">
       <table class="heatmap" id="heatmapTable"></table>
     </div>
   </div>
+
+  <!-- Component summary below heatmap -->
+  <div class="card">
+    <div class="card-title">Distribuição por faixa de desgaste — por componente</div>
+    <canvas id="chartHeatDistrib" style="max-height:200px"></canvas>
+  </div>
 </div>
 
-<!-- ======= PAGE 3: ALERTAS ======= -->
+<!-- ===================== PAGE: ALERTAS ===================== -->
 <div id="page-alertas" class="page">
-  <div class="section-title" style="color:#e05252;">⚠ Equipamentos Críticos (>80% desgaste)</div>
-  <div class="card" style="margin-bottom:20px; border-color:rgba(224,82,82,.3);">
+
+  <!-- NEW: Summary banner -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;">
+    <div style="background:rgba(224,82,82,.08);border:1px solid rgba(224,82,82,.3);border-radius:8px;padding:14px 18px;">
+      <div style="font-size:10px;color:var(--danger);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Intervenção Imediata</div>
+      <div style="font-size:24px;font-weight:700;font-family:var(--mono);color:var(--danger)">1</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">1101PF1803 — Roda Guia 104%</div>
+    </div>
+    <div style="background:rgba(240,180,41,.08);border:1px solid rgba(240,180,41,.3);border-radius:8px;padding:14px 18px;">
+      <div style="font-size:10px;color:var(--warn);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Programar em 500h</div>
+      <div style="font-size:24px;font-weight:700;font-family:var(--mono);color:var(--warn)">3</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">SA44, SA37, PF1803 LNC</div>
+    </div>
+    <div style="background:rgba(41,193,138,.06);border:1px solid rgba(41,193,138,.25);border-radius:8px;padding:14px 18px;">
+      <div style="font-size:10px;color:var(--ok);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Custo estimado peças</div>
+      <div style="font-size:24px;font-weight:700;font-family:var(--mono);color:var(--ok)">~4</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">Rodas Guia a substituir (curto prazo)</div>
+    </div>
+  </div>
+
+  <div class="section-title" style="color:var(--danger)">⚠ Componentes Críticos (&gt;80% de desgaste)</div>
+  <div class="card" style="margin-bottom:20px;border-color:rgba(224,82,82,.2);">
     <table class="alert-table" id="tableCriticos"></table>
   </div>
 
-  <div class="section-title" style="color:#f0b429;">Atenção — Roletes Danificados Acumulados</div>
-  <div class="card" style="border-color:rgba(238,167,34,.3);">
+  <div class="section-title" style="color:var(--warn)">Roletes Danificados — Ações Recomendadas</div>
+  <div class="card" style="border-color:rgba(240,180,41,.2);">
     <table class="alert-table" id="tableRoletes"></table>
   </div>
 </div>
 
-<!-- ======= PAGE 4: TAXA ======= -->
+<!-- ===================== PAGE: TAXA ===================== -->
 <div id="page-taxa" class="page">
   <div class="grid-2">
     <div class="card">
@@ -280,177 +614,280 @@
       <canvas id="chartTaxa"></canvas>
     </div>
     <div class="card">
-      <div class="card-title">Evolução do desgaste — Roda Guia (equipamentos críticos)</div>
+      <div class="card-title">Evolução do desgaste — Roda Guia (equipamentos críticos + tendência)</div>
       <canvas id="chartEvol"></canvas>
     </div>
   </div>
+
+  <!-- Benchmark panel -->
   <div class="card">
-    <div class="card-title">Interpretação das taxas — O que os dados dizem</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:8px;">
-      <div style="background:var(--surface2);border-radius:6px;padding:16px;border:1px solid var(--border);">
-        <div style="color:#e05252;font-weight:700;font-size:13px;margin-bottom:8px;">🔴 PZ1001SA37 — Motriz & Sapata</div>
-        <div style="font-size:12px;color:var(--muted);line-height:1.7;">Taxa de desgaste 68%/1000h na Motriz LC — mais de 2× a média da frota. Indica sobrecarga operacional ou operação em terreno abrasivo. Risco de perda de tração catastrófica. Prioridade máxima de intervenção.</div>
-      </div>
-      <div style="background:var(--surface2);border-radius:6px;padding:16px;border:1px solid var(--border);">
-        <div style="color:#e05252;font-weight:700;font-size:13px;margin-bottom:8px;">🔴 1101PF1803 — Roda Guia</div>
-        <div style="font-size:12px;color:var(--muted);line-height:1.7;">104% do limite de desgaste atingido — já ultrapassou a faixa segura. Roda Guia em colapso iminente. Parada imediata para substituição é necessária. Horímetro: 51.431h.</div>
-      </div>
-      <div style="background:var(--surface2);border-radius:6px;padding:16px;border:1px solid var(--border);">
-        <div style="color:#f0b429;font-weight:700;font-size:13px;margin-bottom:8px;">🟡 PZ1001SA44 — Roda Guia + Roletes</div>
-        <div style="font-size:12px;color:var(--muted);line-height:1.7;">95% de desgaste na Roda Guia com apenas 12.380h — taxa anormalmente alta para equipamento novo. 67 roletes danificados acumulados. Investigar causa-raiz: terreno, tensionamento ou defeito de fabricação.</div>
-      </div>
-      <div style="background:var(--surface2);border-radius:6px;padding:16px;border:1px solid var(--border);">
-        <div style="color:#6dcbee;font-weight:700;font-size:13px;margin-bottom:8px;">📊 Padrão de Frota</div>        <div style="font-size:12px;color:var(--muted);line-height:1.7;">Motriz e Sapata são os componentes que mais desgastam. Rolete Inferior apresenta desgaste acelerado em equipamentos de alta horímetro. Bucha e Elo estão dentro da normalidade na maioria dos equipamentos.</div>
-      </div>
+    <div class="card-title">Benchmark de frota — Taxa vs. Horímetro</div>
+    <canvas id="chartScatter" style="max-height:260px"></canvas>
+  </div>
+</div>
+
+<!-- ===================== PAGE: ASSIMETRIA ===================== -->
+<div id="page-assimetria" class="page">
+  <div class="section-title">Desgaste desigual entre Lado Cabine (LC) e Lado Não-Cabine (LNC)</div>
+
+  <!-- Filter by component -->
+  <div class="filter-bar" style="margin-bottom:20px">
+    <span class="filter-label">Componente:</span>
+    <button class="filter-btn active" onclick="filterAsym('all',this)">Todos</button>
+    <button class="filter-btn" onclick="filterAsym('RODA_GUIA',this)">Roda Guia</button>
+    <button class="filter-btn" onclick="filterAsym('SAPATA',this)">Sapata</button>
+    <button class="filter-btn" onclick="filterAsym('MOTRIZ',this)">Motriz</button>
+    <button class="filter-btn" onclick="filterAsym('ELO',this)">Elo</button>
+  </div>
+
+  <div id="asymContainer"></div>
+
+  <div class="card">
+    <div class="card-title">Por que a assimetria importa?</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.9;padding:4px 0">
+      Desgaste assimétrico entre LC e LNC indica:
+      <strong style="color:var(--text)">tensionamento irregular da esteira</strong>,
+      <strong style="color:var(--text)">operação predominante em curvas</strong>,
+      <strong style="color:var(--text)">piso inclinado</strong> ou
+      <strong style="color:var(--text)">defeito no conjunto de roletes de um lado</strong>.
+      Diferenças acima de <strong style="color:var(--warn)">15pp</strong> devem acionar inspeção imediata do mecanismo de tensão
+      e verificação do alinhamento da esteira.
+      A assimetria acelera o desgaste dos componentes adjacentes e pode reduzir a vida útil da esteira em até <strong style="color:var(--danger)">30%</strong>.
+    </div>
+    <div style="margin-top:16px">
+      <canvas id="chartAsymRadar" style="max-height:240px"></canvas>
     </div>
   </div>
 </div>
 
-<!-- ======= PAGE 5: ASSIMETRIA ======= -->
-<div id="page-assimetria" class="page">
-  <div class="section-title">Desgaste desigual entre Lado Cabine (LC) e Lado Não-Cabine (LNC)</div>
-  <div class="grid-2">
-    <div class="card">
-      <div class="card-title">Assimetria significativa (&gt;10pp) — Roda Guia</div>
-      <div id="asymRodaGuia"></div>
-    </div>
-    <div class="card">
-      <div class="card-title">Assimetria — ELO</div>
-      <div id="asymElo"></div>
-    </div>
+<!-- ===================== PAGE: INSIGHTS ===================== -->
+<div id="page-insights" class="page">
+  <div class="section-title">Recomendações Baseadas em Dados — Fev/2026</div>
+
+  <div class="insight-grid" id="insightGrid"></div>
+
+  <div class="card" style="margin-top:20px">
+    <div class="card-title">Plano de manutenção recomendado — próximas 4 semanas</div>
+    <table class="alert-table" id="tablePlan"></table>
   </div>
-  <div class="grid-2">
-    <div class="card">
-      <div class="card-title">Assimetria — SAPATA</div>
-      <div id="asymSapata"></div>
-    </div>
-    <div class="card">
-      <div class="card-title">Assimetria — MOTRIZ</div>
-      <div id="asymMotriz"></div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-title">Por que a assimetria importa?</div>
-    <div style="font-size:13px;color:var(--muted);line-height:1.9;padding:4px 0;">
-      Desgaste assimétrico entre LC e LNC indica: <strong style="color:var(--text);">tensionamento irregular da esteira</strong>, 
-      <strong style="color:var(--text);">operação predominante em curvas</strong>, <strong style="color:var(--text);">piso inclinado</strong> ou 
-      <strong style="color:var(--text);">defeito no conjunto de roletes de um lado</strong>. 
-      Diferenças acima de 15pp devem acionar inspeção imediata do mecanismo de tensão e verificação do alinhamento da esteira. 
-      A assimetria acelera desgaste dos componentes adjacentes e reduz vida útil da esteira em até 30%.
+
+  <div class="card" style="margin-top:20px">
+    <div class="card-title">Riscos e Premissas</div>
+    <div style="font-size:12px;color:var(--muted);line-height:1.9">
+      As taxas de desgaste foram calculadas com base em inspeções visuais e medições dimensionais registradas.
+      Os limites de componente usados como denominador são valores nominais do fabricante.
+      Variações de solo, operadores e turnos não foram normalizadas nesta análise.
+      Recomenda-se calibrar os alertas com dados de no mínimo 3 ciclos de inspeção antes de ajustar os thresholds padrão.
     </div>
   </div>
 </div>
 
 </div><!-- /main -->
 
+<!-- ===================== PAGE: SAP DEMANDS ===================== -->
+<div class="main" id="sap-main" style="display:none">
+<div id="page-sap" class="page active">
+
+  <!-- Rule banner -->
+  <div style="display:flex;align-items:flex-start;gap:14px;background:rgba(41,171,226,.06);border:1px solid rgba(41,171,226,.25);border-radius:8px;padding:14px 18px;margin-bottom:22px;">
+    <div style="font-size:22px;line-height:1">📋</div>
+    <div>
+      <div style="font-size:12px;font-weight:700;color:var(--blue-light);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Regra de Negócio — Programação SAP</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.7">
+        Todo componente que atingir <strong style="color:var(--warn)">≥ 70% de vida útil</strong> deve ter uma demanda aberta no SAP
+        para programação de substituição. Isso garante lead time suficiente para aquisição de peças,
+        planejamento de janela de manutenção e evita parada não planejada por falha.
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary row -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px;" id="sapSummaryRow"></div>
+
+  <!-- Main SAP table -->
+  <div class="section-title">Componentes ≥ 70% — Demandas SAP a Abrir / Em Andamento</div>
+  <div class="card" style="margin-bottom:20px;">
+    <div class="card-title">
+      Lista gerada automaticamente em Fev/2026
+      <button class="btn" onclick="exportSapCSV()">⬇ Exportar CSV</button>
+    </div>
+    <table class="sap-table" id="sapMainTable"></table>
+  </div>
+
+  <!-- By component breakdown -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Demandas por componente</div>
+      <canvas id="chartSapComp" style="max-height:220px"></canvas>
+    </div>
+    <div class="card">
+      <div class="card-title">Distribuição por urgência de abertura</div>
+      <canvas id="chartSapUrgencia" style="max-height:220px"></canvas>
+    </div>
+  </div>
+
+  <!-- Methodology note -->
+  <div class="card" style="margin-top:4px">
+    <div class="card-title">Critério de priorização das demandas</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:4px">
+      <div style="background:var(--surface2);border-radius:6px;padding:12px;border-left:3px solid #e05252">
+        <div style="font-family:var(--mono);font-size:10px;color:#e05252;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">P1 — Abrir Hoje</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.7">Componente ≥ 90% do limite. Risco de falha catastrófica em operação. OS deve ser emitida imediatamente com bloqueio de operação do equipamento se necessário.</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:6px;padding:12px;border-left:3px solid #f0b429">
+        <div style="font-family:var(--mono);font-size:10px;color:#f0b429;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">P2 — Abrir Esta Semana</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.7">Componente entre 80–90%. Janela de intervenção de 2–4 semanas antes do limite. OS deve entrar no próximo ciclo de PM para garantir disponibilidade de peças.</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:6px;padding:12px;border-left:3px solid #29ABE2">
+        <div style="font-family:var(--mono);font-size:10px;color:#29ABE2;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">P3 — Abrir em 30 dias</div>
+        <div style="font-size:11px;color:var(--muted);line-height:1.7">Componente entre 70–80%. Ainda dentro da margem segura, mas demanda SAP é necessária para garantir planejamento e procurement dentro do prazo de lead time típico de 3–6 semanas.</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
 <script>
-// ============ DATA ============
+// ======================== DATA ========================
 const pvData = {
   tags: ['1101PF1601','1101PF1803','PZ1001SA02','PZ1001SA03','PZ1001SA14','PZ1001SA15','PZ1001SA35','PZ1001SA37','PZ1001SA41','PZ1001SA42','PZ1001SA43','PZ1001SA44'],
-  horimetro: [11659, 51431, 47747, 40802, 42634, 42536, 22279, 10806, 28382, 21830, 13287, 12380],
+  horimetro: [11659,51431,47747,40802,42634,42536,22279,10806,28382,21830,13287,12380],
   wear: {
-    ELO:             [14.7, 17.7, 23.8,  5.8,  5.4, 10.0,  5.8,  6.7,  8.7,  8.7,  6.2, 19.6],
-    MOTRIZ:          [57.7, 42.5, 36.4, 26.4, 43.6, 37.5, 45.5, 34.8, 34.4, 31.2, 34.3, 27.9],
-    SAPATA:          [29.2, 27.4, 35.1,  9.0, 22.9, 18.1, 29.9, 39.9, 44.3, 46.9, 15.3, 16.0],
-    BUCHA:           [ 9.6,  3.6,  7.9, 10.3, 10.6, 17.0,  5.3, 12.5,  5.3, 11.0,  3.6,  6.7],
-    ROLETE_INFERIOR: [29.1, 38.5, 38.2, 64.5, 37.2, 31.2, 35.8, 24.9, 35.0, 37.2,  9.3,  9.4],
-    PASSO:           [26.0, 33.8, 32.3, 24.6, 19.2, 37.7, 26.9, 21.2, 31.7, 30.8, 12.3, 26.9],
-    RODA_GUIA:       [33.7, 80.8, 10.0,  8.8,  4.6, 67.1,  4.7, 10.4,  7.3,  6.2, 10.4, 72.9],
+    ELO:             [14.7,17.7,23.8, 5.8, 5.4,10.0, 5.8, 6.7, 8.7, 8.7, 6.2,19.6],
+    MOTRIZ:          [57.7,42.5,36.4,26.4,43.6,37.5,45.5,34.8,34.4,31.2,34.3,27.9],
+    SAPATA:          [29.2,27.4,35.1, 9.0,22.9,18.1,29.9,39.9,44.3,46.9,15.3,16.0],
+    BUCHA:           [ 9.6, 3.6, 7.9,10.3,10.6,17.0, 5.3,12.5, 5.3,11.0, 3.6, 6.7],
+    ROLETE_INFERIOR: [29.1,38.5,38.2,64.5,37.2,31.2,35.8,24.9,35.0,37.2, 9.3, 9.4],
+    PASSO:           [26.0,33.8,32.3,24.6,19.2,37.7,26.9,21.2,31.7,30.8,12.3,26.9],
+    RODA_GUIA:       [33.7,80.8,10.0, 8.8, 4.6,67.1, 4.7,10.4, 7.3, 6.2,10.4,72.9],
   },
-  // Roletes: soma LC+LNC da última inspeção por TAG (ordem: pvData.tags)
-  // 1101PF1601, 1101PF1803, PZ1001SA02, PZ1001SA03, PZ1001SA14, PZ1001SA15,
-  // PZ1001SA35, PZ1001SA37, PZ1001SA41, PZ1001SA42, PZ1001SA43, PZ1001SA44
-  roletes: [12, 0, 0, 2, 3, 8, 0, 15, 1, 2, 2, 14]
+  roletes: [12,0,0,2,3,8,0,15,1,2,2,14]
 };
 
 const rateData = [
-  {tag:'PZ1001SA37', lado:'LC', comp:'MOTRIZ', rate:68.32},
-  {tag:'PZ1001SA37', lado:'LC', comp:'SAPATA', rate:59.04},
-  {tag:'PZ1001SA37', lado:'LNC', comp:'MOTRIZ', rate:41.75},
-  {tag:'PZ1001SA37', lado:'LNC', comp:'SAPATA', rate:29.52},
-  {tag:'PZ1001SA43', lado:'LNC', comp:'MOTRIZ', rate:26.57},
-  {tag:'PZ1001SA43', lado:'LC', comp:'MOTRIZ', rate:26.57},
-  {tag:'PZ1001SA42', lado:'LC', comp:'MOTRIZ', rate:24.50},
-  {tag:'PZ1001SA37', lado:'LC', comp:'ROL.INF', rate:23.43},
-  {tag:'PZ1001SA43', lado:'LNC', comp:'SAPATA', rate:22.60},
-  {tag:'PZ1001SA42', lado:'LNC', comp:'MOTRIZ', rate:19.60},
-  {tag:'1101PF1803', lado:'LC', comp:'ELO', rate:18.51},
-  {tag:'PZ1001SA37', lado:'LNC', comp:'ROL.INF', rate:17.57},
+  {tag:'PZ1001SA37',lado:'LC', comp:'MOTRIZ',  rate:68.32},
+  {tag:'PZ1001SA37',lado:'LC', comp:'SAPATA',  rate:59.04},
+  {tag:'PZ1001SA37',lado:'LNC',comp:'MOTRIZ',  rate:41.75},
+  {tag:'PZ1001SA37',lado:'LNC',comp:'SAPATA',  rate:29.52},
+  {tag:'PZ1001SA43',lado:'LNC',comp:'MOTRIZ',  rate:26.57},
+  {tag:'PZ1001SA43',lado:'LC', comp:'MOTRIZ',  rate:26.57},
+  {tag:'PZ1001SA42',lado:'LC', comp:'MOTRIZ',  rate:24.50},
+  {tag:'PZ1001SA37',lado:'LC', comp:'ROL.INF', rate:23.43},
+  {tag:'PZ1001SA43',lado:'LNC',comp:'SAPATA',  rate:22.60},
+  {tag:'PZ1001SA42',lado:'LNC',comp:'MOTRIZ',  rate:19.60},
+  {tag:'1101PF1803', lado:'LC',comp:'ELO',     rate:18.51},
+  {tag:'PZ1001SA37',lado:'LNC',comp:'ROL.INF', rate:17.57},
 ];
 
 const evolData = {
   '1101PF1803': {h:[49769,50282,51431], rg_lc:[72.9,79.2,104.2]},
-  'PZ1001SA44': {h:[11290,12380], rg_lc:[83.3,95.8]},
-  '1101PF1601': {h:[9240,9553,11659], rg_lc:[25.0,29.2,62.5]},
+  'PZ1001SA44':  {h:[11290,12380],       rg_lc:[83.3,95.8]},
+  '1101PF1601':  {h:[9240,9553,11659],   rg_lc:[25.0,29.2,62.5]},
 };
 
 const asymData = {
   RODA_GUIA: [
-    {tag:'1101PF1601', lc:62.5, lnc:37.5},
-    {tag:'1101PF1803', lc:104.2, lnc:79.2},
-    {tag:'PZ1001SA43', lc:29.2, lnc:12.5},
-    {tag:'PZ1001SA44', lc:95.8, lnc:79.2},
+    {tag:'1101PF1601',lc:62.5,  lnc:37.5},
+    {tag:'1101PF1803',lc:104.2, lnc:79.2},
+    {tag:'PZ1001SA43',lc:29.2,  lnc:12.5},
+    {tag:'PZ1001SA44',lc:95.8,  lnc:79.2},
   ],
   ELO: [
-    {tag:'1101PF1803', lc:50.0, lnc:11.5},
-    {tag:'PZ1001SA44', lc:19.2, lnc:34.6},
+    {tag:'1101PF1803',lc:50.0,  lnc:11.5},
+    {tag:'PZ1001SA44',lc:19.2,  lnc:34.6},
   ],
   SAPATA: [
-    {tag:'PZ1001SA03', lc:13.9, lnc:0.0},
-    {tag:'PZ1001SA14', lc:27.8, lnc:41.7},
-    {tag:'PZ1001SA35', lc:41.7, lnc:27.8},
-    {tag:'PZ1001SA37', lc:69.4, lnc:48.6},
-    {tag:'PZ1001SA41', lc:41.7, lnc:55.6},
-    {tag:'PZ1001SA42', lc:34.7, lnc:69.4},
-    {tag:'PZ1001SA43', lc:13.9, lnc:48.6},
+    {tag:'PZ1001SA03',lc:13.9,  lnc:0.0},
+    {tag:'PZ1001SA14',lc:27.8,  lnc:41.7},
+    {tag:'PZ1001SA35',lc:41.7,  lnc:27.8},
+    {tag:'PZ1001SA37',lc:69.4,  lnc:48.6},
+    {tag:'PZ1001SA41',lc:41.7,  lnc:55.6},
+    {tag:'PZ1001SA42',lc:34.7,  lnc:69.4},
+    {tag:'PZ1001SA43',lc:13.9,  lnc:48.6},
   ],
   MOTRIZ: [
-    {tag:'PZ1001SA37', lc:71.4, lnc:42.9},
+    {tag:'PZ1001SA37',lc:71.4,  lnc:42.9},
   ]
 };
 
-// ============ HELPERS ============
-function wearColor(pct) {
-  if (pct > 100) return '#c03030';
-  if (pct > 80)  return '#e05252';
-  if (pct > 50)  return '#f0b429';
-  if (pct > 25)  return '#6dcbee';
-  return '#29ABE2';
+// ======================== HELPERS ========================
+const SAP_THRESHOLD = 70; // regra: ≥70% → abrir demanda SAP
+
+const wearColor = p =>
+  p > 100 ? '#c03030' : p > 80 ? '#e05252' : p >= SAP_THRESHOLD ? '#f0b429' : p > 25 ? '#29ABE2' : '#1a87b8';
+const wearClass = p =>
+  p > 100 ? 'cell-crit' : p > 80 ? 'cell-high' : p >= SAP_THRESHOLD ? 'cell-med' : p > 25 ? 'cell-low' : 'cell-ok';
+const statusOf = tag => {
+  const i = pvData.tags.indexOf(tag);
+  if (i < 0) return 'ok';
+  const maxW = Math.max(...Object.values(pvData.wear).map(arr => arr[i]));
+  return maxW > 80 ? 'danger' : maxW >= SAP_THRESHOLD ? 'warn' : 'ok';
+};
+
+// ---- Build flat list of all components ≥ SAP_THRESHOLD ----
+const COMP_LABELS = {ELO:'Elo',MOTRIZ:'Motriz',SAPATA:'Sapata',BUCHA:'Bucha',ROLETE_INFERIOR:'Rolete Inferior',PASSO:'Passo',RODA_GUIA:'Roda Guia'};
+function sapPriority(pct) {
+  if (pct >= 90) return {label:'P1 — Abrir Hoje',  color:'#e05252', short:'P1'};
+  if (pct >= 80) return {label:'P2 — Esta Semana', color:'#f0b429', short:'P2'};
+  return              {label:'P3 — Em 30 dias',    color:'#29ABE2', short:'P3'};
 }
-function wearClass(pct) {
-  if (pct > 100) return 'cell-crit';
-  if (pct > 80)  return 'cell-high';
-  if (pct > 50)  return 'cell-med';
-  if (pct > 25)  return 'cell-low';
-  return 'cell-ok';
-}
-// ============ CHART: Component avg wear ============
+
+const sapDemands = [];
+pvData.tags.forEach((tag,i) => {
+  Object.keys(pvData.wear).forEach(compKey => {
+    const pct = pvData.wear[compKey][i];
+    if (pct >= SAP_THRESHOLD) {
+      sapDemands.push({
+        tag, comp: COMP_LABELS[compKey], compKey,
+        pct, horim: pvData.horimetro[i],
+        priority: sapPriority(pct),
+        osNumber: null, // em aberto
+      });
+    }
+  });
+});
+// sort by pct desc
+sapDemands.sort((a,b) => b.pct - a.pct);
+
+// Chart defaults
+Chart.defaults.color = '#5a8fa8';
+Chart.defaults.font.family = 'IBM Plex Mono';
+Chart.defaults.font.size = 11;
+const gridColor = 'rgba(41,171,226,.07)';
+
+// ======================== KPI: avg wear ========================
 const avgWear = {};
 Object.keys(pvData.wear).forEach(k => {
-  avgWear[k] = pvData.wear[k].reduce((a,b)=>a+b,0)/pvData.wear[k].length;
+  avgWear[k] = pvData.wear[k].reduce((a,b)=>a+b,0) / pvData.wear[k].length;
 });
 
+// ======================== CHART: Component avg ========================
 new Chart(document.getElementById('chartComponentPV'), {
   type: 'bar',
   data: {
     labels: ['ELO','MOTRIZ','SAPATA','BUCHA','ROL.INF','PASSO','RODA GUIA'],
     datasets: [{
-      data: [avgWear.ELO, avgWear.MOTRIZ, avgWear.SAPATA, avgWear.BUCHA, avgWear.ROLETE_INFERIOR, avgWear.PASSO, avgWear.RODA_GUIA].map(v=>+v.toFixed(1)),
-      backgroundColor: [avgWear.ELO, avgWear.MOTRIZ, avgWear.SAPATA, avgWear.BUCHA, avgWear.ROLETE_INFERIOR, avgWear.PASSO, avgWear.RODA_GUIA].map(wearColor),
-      borderRadius: 4,
-      borderSkipped: false,
+      data: ['ELO','MOTRIZ','SAPATA','BUCHA','ROLETE_INFERIOR','PASSO','RODA_GUIA'].map(k => +avgWear[k].toFixed(1)),
+      backgroundColor: ['ELO','MOTRIZ','SAPATA','BUCHA','ROLETE_INFERIOR','PASSO','RODA_GUIA'].map(k => wearColor(avgWear[k])),
+      borderRadius: 4, borderSkipped: false,
     }]
   },
   options: {
-    responsive:true, plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>`${ctx.raw}% do limite`}}},
+    responsive:true,
+    plugins:{
+      legend:{display:false},
+      tooltip:{callbacks:{label: ctx => `${ctx.raw}% do limite (média)`}}
+    },
     scales:{
-      x:{ticks:{color:'#7d8590',font:{size:11}},grid:{color:'rgba(48,54,61,.5)'}},
-      y:{ticks:{color:'#7d8590',font:{size:11},callback:v=>v+'%'},grid:{color:'rgba(48,54,61,.5)'},suggestedMax:80}
+      x:{ticks:{color:'#5a8fa8'},grid:{color:gridColor}},
+      y:{ticks:{color:'#5a8fa8',callback:v=>v+'%'},grid:{color:gridColor},suggestedMax:80,
+         title:{display:true,text:'% do limite',color:'#5a8fa8',font:{size:10}}}
     }
   }
 });
 
-// ============ CHART: Roletes ============
+// ======================== CHART: Roletes ========================
 const roleteSorted = pvData.tags.map((t,i)=>({tag:t,v:pvData.roletes[i]})).sort((a,b)=>b.v-a.v).filter(x=>x.v>0);
 new Chart(document.getElementById('chartRoletes'), {
   type: 'bar',
@@ -458,24 +895,23 @@ new Chart(document.getElementById('chartRoletes'), {
     labels: roleteSorted.map(x=>x.tag),
     datasets: [{
       data: roleteSorted.map(x=>x.v),
-      backgroundColor: roleteSorted.map(x=> x.v>=10?'#e05252': x.v>=4?'#f0b429':'#6dcbee'),
+      backgroundColor: roleteSorted.map(x=> x.v>=10?'#e05252': x.v>=4?'#f0b429':'#29ABE2'),
       borderRadius: 4, borderSkipped: false,
     }]
   },
   options: {
-    responsive:true, plugins:{legend:{display:false}},
+    responsive:true,
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.raw} roletes danificados`}}},
     scales:{
-      x:{ticks:{color:'#7d8590',font:{size:10}},grid:{color:'rgba(48,54,61,.5)'}},
-      y:{ticks:{color:'#7d8590',font:{size:11}},grid:{color:'rgba(48,54,61,.5)'}}
+      x:{ticks:{color:'#5a8fa8',font:{size:9}},grid:{color:gridColor}},
+      y:{ticks:{color:'#5a8fa8'},grid:{color:gridColor},
+         title:{display:true,text:'Roletes danificados',color:'#5a8fa8',font:{size:10}}}
     }
   }
 });
 
-// ============ FLEET GRID ============
-const fg = document.getElementById('fleetGrid');
-pvData.tags.forEach((tag,i) => {
-  const card = document.createElement('div');
-  card.className = 'fleet-card';
+// ======================== FLEET GRID ========================
+function buildFleetCard(tag, i) {
   const comps = [
     ['RODA GUIA', pvData.wear.RODA_GUIA[i]],
     ['MOTRIZ',    pvData.wear.MOTRIZ[i]],
@@ -483,54 +919,160 @@ pvData.tags.forEach((tag,i) => {
     ['ROL.INF',   pvData.wear.ROLETE_INFERIOR[i]],
     ['ELO',       pvData.wear.ELO[i]],
   ];
-  const maxW = Math.max(...comps.map(c=>c[1]));
-  const status = maxW > 80 ? 'var(--danger)' : maxW > 50 ? 'var(--warn)' : 'var(--ok)';
+  const maxW   = Math.max(...comps.map(c=>c[1]));
+  const status = maxW > 80 ? 'danger' : maxW >= SAP_THRESHOLD ? 'warn' : 'ok';
+  const statusColor = status==='danger' ? 'var(--danger)' : status==='warn' ? 'var(--warn)' : 'var(--ok)';
+  const sapComps = comps.filter(([,v]) => v >= SAP_THRESHOLD);
+  const card = document.createElement('div');
+  card.className = 'fleet-card';
+  card.dataset.status = status;
+  card.dataset.tag = tag;
+  card.style.setProperty('--status-color', statusColor);
   card.innerHTML = `
-    <div class="fleet-tag" style="color:${status}">${tag}</div>
+    <div class="fleet-tag" style="color:${statusColor}">${tag}</div>
     <div class="fleet-model">Pit Viper DR416i · ${(pvData.horimetro[i]/1000).toFixed(1)}kh</div>
     ${comps.map(([name,val])=>`
       <div class="fleet-comp-row">
         <div class="fleet-comp-name">${name}</div>
-        <div class="fleet-bar-bg"><div class="fleet-bar-fill" style="width:${Math.min(val,100)}%;background:${wearColor(val)}"></div></div>
+        <div class="fleet-bar-bg" style="position:relative">
+          <div class="fleet-bar-fill" style="width:${Math.min(val,100)}%;background:${wearColor(val)}"></div>
+          <!-- SAP threshold marker at 70% -->
+          <div style="position:absolute;top:-1px;bottom:-1px;left:70%;width:1px;background:rgba(240,180,41,.7);"></div>
+        </div>
         <div class="fleet-pct" style="color:${wearColor(val)}">${val.toFixed(0)}%</div>
+        ${val >= SAP_THRESHOLD ? `<span title="Abrir demanda SAP" style="font-size:9px;color:#f0b429;font-family:var(--mono);font-weight:700;margin-left:2px">SAP</span>` : ''}
       </div>`).join('')}
-    <div style="margin-top:8px;font-size:10px;color:var(--muted);">Roletes danif: <span style="color:${pvData.roletes[i]>=10?'#e05252':pvData.roletes[i]>=4?'#f0b429':'var(--muted)'}">${pvData.roletes[i]}</span></div>
-  `;
-  fg.appendChild(card);
-});
+    <div class="fleet-footer">
+      <span>Roletes: <span style="color:${pvData.roletes[i]>=10?'#e05252':pvData.roletes[i]>=4?'#f0b429':'var(--muted)'};font-weight:700">${pvData.roletes[i]}</span></span>
+      ${sapComps.length > 0
+        ? `<span class="sap-badge sap-pending">📋 ${sapComps.length} OS SAP</span>`
+        : `<span style="color:${statusColor};font-weight:700;font-size:10px;font-family:var(--mono)">${status==='danger'?'⚠ CRÍTICO':status==='warn'?'● ATENÇÃO':'✓ NORMAL'}</span>`
+      }
+    </div>`;
+  return card;
+}
 
-// ============ HEATMAP ============
+const fg = document.getElementById('fleetGrid');
+pvData.tags.forEach((tag,i) => fg.appendChild(buildFleetCard(tag,i)));
+
+function filterFleet(filter, btn) {
+  document.querySelectorAll('.filter-bar .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('#fleetGrid .fleet-card').forEach(c => {
+    c.style.display = (filter === 'all' || c.dataset.status === filter) ? '' : 'none';
+  });
+}
+function searchFleet(q) {
+  const v = q.toLowerCase();
+  document.querySelectorAll('#fleetGrid .fleet-card').forEach(c => {
+    c.style.display = c.dataset.tag.toLowerCase().includes(v) ? '' : 'none';
+  });
+}
+
+// ======================== HEATMAP ========================
 const hCols = ['ELO','MOTRIZ','SAPATA','BUCHA','ROL.INF','PASSO','RODA GUIA'];
 const hKeys = ['ELO','MOTRIZ','SAPATA','BUCHA','ROLETE_INFERIOR','PASSO','RODA_GUIA'];
-const tbl = document.getElementById('heatmapTable');
-let th = '<tr><th>TAG</th><th>Horímetro</th>';
-hCols.forEach(c => th += `<th>${c}</th>`);
-th += '</tr>';
-tbl.innerHTML = th;
-pvData.tags.forEach((tag,i) => {
-  let row = `<tr><td class="tag-cell">${tag}</td><td style="color:var(--muted);font-size:11px">${pvData.horimetro[i].toLocaleString('pt-BR')}h</td>`;
-  hKeys.forEach(k => {
-    const v = pvData.wear[k][i];
-    row += `<td class="${wearClass(v)}">${v.toFixed(0)}%</td>`;
+let heatSortCol = null, heatSortDir = 1;
+
+function buildHeatmap(sortKey) {
+  const tbl = document.getElementById('heatmapTable');
+  let idxOrder = pvData.tags.map((_,i)=>i);
+  if (sortKey !== null) {
+    idxOrder.sort((a,b) => heatSortDir * (pvData.wear[hKeys[sortKey]][b] - pvData.wear[hKeys[sortKey]][a]));
+  }
+  let head = '<tr><th style="text-align:left;cursor:default">TAG</th><th style="text-align:left;cursor:default">Horímetro</th>';
+  hCols.forEach((c,ci) => {
+    const cls = sortKey===ci ? (heatSortDir===1?'sort-desc':'sort-asc') : '';
+    head += `<th class="${cls}" onclick="toggleHeatSort(${ci})">${c}</th>`;
   });
-  row += '</tr>';
-  tbl.innerHTML += row;
+  head += `<th style="color:#f0b429;letter-spacing:.5px">📋 SAP</th></tr>`;
+  let body = idxOrder.map(i => {
+    const tag = pvData.tags[i];
+    const h   = pvData.horimetro[i];
+    const sapCount = hKeys.filter(k => pvData.wear[k][i] >= SAP_THRESHOLD).length;
+    let row = `<tr><td class="tag-cell">${tag}</td><td class="horim-cell">${h.toLocaleString('pt-BR')}h</td>`;
+    hKeys.forEach(k => {
+      const v = pvData.wear[k][i];
+      const sapMark = v >= SAP_THRESHOLD ? ' ●' : '';
+      row += `<td class="${wearClass(v)}" title="${v >= SAP_THRESHOLD ? 'Abrir demanda SAP' : ''}">${v.toFixed(0)}%${v >= SAP_THRESHOLD ? '<span style="font-size:9px;opacity:.7"> SAP</span>' : ''}</td>`;
+    });
+    row += `<td style="text-align:center">${sapCount > 0
+      ? `<span class="sap-badge sap-${sapCount>=3?'critical':'pending'}">${sapCount} OS</span>`
+      : `<span style="color:var(--muted);font-size:10px;font-family:var(--mono)">—</span>`
+    }</td>`;
+    return row + '</tr>';
+  }).join('');
+  tbl.innerHTML = head + body;
+}
+buildHeatmap(null);
+
+function toggleHeatSort(ci) {
+  if (heatSortCol === ci) heatSortDir *= -1; else heatSortDir = 1;
+  heatSortCol = ci;
+  buildHeatmap(ci);
+}
+function sortHeatmap() {
+  heatSortDir = 1; heatSortCol = null;
+  const maxes = pvData.tags.map((_,i) => Math.max(...hKeys.map(k => pvData.wear[k][i])));
+  const tbl = document.getElementById('heatmapTable');
+  let idxOrder = pvData.tags.map((_,i)=>i).sort((a,b) => maxes[b]-maxes[a]);
+  let head = tbl.rows[0].outerHTML;
+  let body = idxOrder.map(i => {
+    const sapCount = hKeys.filter(k => pvData.wear[k][i] >= SAP_THRESHOLD).length;
+    let row = `<tr><td class="tag-cell">${pvData.tags[i]}</td><td class="horim-cell">${pvData.horimetro[i].toLocaleString('pt-BR')}h</td>`;
+    hKeys.forEach(k => { const v = pvData.wear[k][i]; row += `<td class="${wearClass(v)}">${v.toFixed(0)}%${v >= SAP_THRESHOLD ? '<span style="font-size:9px;opacity:.7"> SAP</span>' : ''}</td>`; });
+    row += `<td style="text-align:center">${sapCount > 0 ? `<span class="sap-badge sap-${sapCount>=3?'critical':'pending'}">${sapCount} OS</span>` : `<span style="color:var(--muted);font-size:10px;font-family:var(--mono)">—</span>`}</td>`;
+    return row + '</tr>';
+  }).join('');
+  tbl.innerHTML = head + body;
+}
+
+// ======================== CHART: Heatmap distribution ========================
+const distBuckets = hCols.map((_,ci) => {
+  const vals = pvData.wear[hKeys[ci]];
+  return {
+    ok:   vals.filter(v=>v<=25).length,
+    low:  vals.filter(v=>v>25&&v<=50).length,
+    med:  vals.filter(v=>v>50&&v<=80).length,
+    high: vals.filter(v=>v>80).length,
+  };
+});
+new Chart(document.getElementById('chartHeatDistrib'), {
+  type: 'bar',
+  data: {
+    labels: hCols,
+    datasets: [
+      {label:'0–25%',  data: distBuckets.map(b=>b.ok),   backgroundColor:'rgba(41,171,226,.35)',  borderRadius:2},
+      {label:'25–50%', data: distBuckets.map(b=>b.low),  backgroundColor:'rgba(41,171,226,.7)',   borderRadius:2},
+      {label:'50–80%', data: distBuckets.map(b=>b.med),  backgroundColor:'rgba(240,180,41,.7)',   borderRadius:2},
+      {label:'>80%',   data: distBuckets.map(b=>b.high), backgroundColor:'rgba(224,82,82,.8)',    borderRadius:2},
+    ]
+  },
+  options: {
+    responsive:true, indexAxis:'x',
+    plugins:{legend:{labels:{color:'#5a8fa8',font:{size:10}}}},
+    scales:{
+      x:{stacked:true,ticks:{color:'#5a8fa8'},grid:{color:gridColor}},
+      y:{stacked:true,ticks:{color:'#5a8fa8',callback:v=>v+' equip'},grid:{color:gridColor}}
+    }
+  }
 });
 
-// ============ ALERTAS ============
+// ======================== ALERTAS ========================
 const criticos = [
-  {tag:'1101PF1803', comp:'Roda Guia LC', pct:104.2, horim:'51.431h', status:'CRÍTICO'},
-  {tag:'PZ1001SA44', comp:'Roda Guia LC', pct:95.8,  horim:'12.380h', status:'CRÍTICO'},
-  {tag:'PZ1001SA44', comp:'Roda Guia LNC', pct:79.2, horim:'12.380h', status:'ATENÇÃO'},
-  {tag:'1101PF1803', comp:'Roda Guia LNC', pct:79.2, horim:'51.431h', status:'ATENÇÃO'},
-  {tag:'PZ1001SA37', comp:'Motriz LC',     pct:71.4, horim:'10.806h', status:'ATENÇÃO'},
-  {tag:'PZ1001SA37', comp:'Sapata LC',     pct:69.4, horim:'10.806h', status:'ATENÇÃO'},
-  {tag:'PZ1001SA15', comp:'Roda Guia',     pct:67.1, horim:'42.536h', status:'ATENÇÃO'},
+  {tag:'1101PF1803',comp:'Roda Guia LC',  pct:104.2,horim:'51.431h',urgencia:'IMEDIATO',  eta:'Parada já'},
+  {tag:'PZ1001SA44', comp:'Roda Guia LC', pct:95.8, horim:'12.380h',urgencia:'≤500h',     eta:'~3 semanas'},
+  {tag:'PZ1001SA44', comp:'Roda Guia LNC',pct:79.2, horim:'12.380h',urgencia:'≤1000h',    eta:'~6 semanas'},
+  {tag:'1101PF1803', comp:'Roda Guia LNC',pct:79.2, horim:'51.431h',urgencia:'≤1000h',    eta:'~6 semanas'},
+  {tag:'PZ1001SA37', comp:'Motriz LC',    pct:71.4, horim:'10.806h',urgencia:'≤2000h',    eta:'~12 sem.'},
+  {tag:'PZ1001SA37', comp:'Sapata LC',    pct:69.4, horim:'10.806h',urgencia:'≤2000h',    eta:'~12 sem.'},
+  {tag:'PZ1001SA15', comp:'Roda Guia',    pct:67.1, horim:'42.536h',urgencia:'≤2000h',    eta:'~12 sem.'},
 ];
+
 const tc = document.getElementById('tableCriticos');
-tc.innerHTML = `<tr><th>TAG</th><th>Componente</th><th>% Desgaste</th><th>Horímetro</th><th>Status</th></tr>`;
+tc.innerHTML = `<tr><th>TAG</th><th>Componente</th><th>Desgaste</th><th>Horímetro</th><th>Urgência</th><th>Previsão</th></tr>`;
 criticos.forEach(r => {
-  const col = r.status==='CRÍTICO' ? '#e05252' : '#f0b429';
+  const col = r.urgencia==='IMEDIATO'?'#e05252':r.urgencia==='≤500h'?'#ff8040':'#f0b429';
   tc.innerHTML += `<tr>
     <td><span class="tag-pill">${r.tag}</span></td>
     <td style="color:var(--text)">${r.comp}</td>
@@ -540,98 +1082,411 @@ criticos.forEach(r => {
         <div class="wear-pct" style="color:${col}">${r.pct.toFixed(1)}%</div>
       </div>
     </td>
-    <td style="font-family:var(--mono);font-size:12px;color:var(--muted)">${r.horim}</td>
-    <td><span class="badge ${r.status==='CRÍTICO'?'badge-danger':'badge-warn'}">${r.status}</span></td>
+    <td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${r.horim}</td>
+    <td><span class="badge ${r.urgencia==='IMEDIATO'?'badge-danger':'badge-warn'}">${r.urgencia}</span></td>
+    <td style="font-size:11px;color:${col};font-family:var(--mono)">${r.eta}</td>
   </tr>`;
 });
 
 const roletesAlerts = pvData.tags.map((t,i)=>({tag:t,v:pvData.roletes[i],h:pvData.horimetro[i]})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
 const tr2 = document.getElementById('tableRoletes');
-tr2.innerHTML = `<tr><th>TAG</th><th>Roletes Danificados</th><th>Horímetro</th><th>Obs</th></tr>`;
+tr2.innerHTML = `<tr><th>TAG</th><th>Roletes Danif.</th><th>Horímetro</th><th>Ação Recomendada</th></tr>`;
 roletesAlerts.forEach(r => {
-  const col = r.v>=10?'#e05252':r.v>=4?'#f0b429':'#6dcbee';
-  const obs = r.v>=10?'Inspeção imediata':r.v>=4?'Programar substituição':'Monitorar';
+  const col = r.v>=10?'#e05252':r.v>=4?'#f0b429':'#29ABE2';
+  const acao = r.v>=10?'Inspeção imediata + substituição':r.v>=4?'Programar substituição próx. PM':'Monitorar na próx. inspeção';
   tr2.innerHTML += `<tr>
     <td><span class="tag-pill">${r.tag}</span></td>
-    <td style="font-family:var(--mono);font-size:18px;font-weight:700;color:${col}">${r.v}</td>
-    <td style="font-family:var(--mono);font-size:12px;color:var(--muted)">${r.h.toLocaleString('pt-BR')}h</td>
-    <td style="font-size:12px;color:${col}">${obs}</td>
+    <td style="font-family:var(--mono);font-size:20px;font-weight:700;color:${col}">${r.v}</td>
+    <td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${r.h.toLocaleString('pt-BR')}h</td>
+    <td style="font-size:12px;color:${col}">${acao}</td>
   </tr>`;
 });
 
-// ============ CHART: Taxa ============
+// ======================== CHART: Taxa ========================
 new Chart(document.getElementById('chartTaxa'), {
   type: 'bar',
   data: {
-    labels: rateData.slice(0,12).map(r=>`${r.tag}\n${r.comp} ${r.lado}`),
+    labels: rateData.slice(0,12).map(r=>`${r.tag} · ${r.comp} ${r.lado}`),
     datasets: [{
       data: rateData.slice(0,12).map(r=>r.rate),
-      backgroundColor: rateData.slice(0,12).map(r=> r.rate>50?'#e05252': r.rate>30?'#f0b429':'#6dcbee'),
+      backgroundColor: rateData.slice(0,12).map(r=> r.rate>50?'#e05252':r.rate>30?'#f0b429':'#29ABE2'),
       borderRadius: 4, borderSkipped: false,
     }]
   },
   options: {
-    indexAxis:'y',
-    responsive:true, plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>`${ctx.raw}%/1000h`}}},
+    indexAxis:'y', responsive:true,
+    plugins:{legend:{display:false}, tooltip:{callbacks:{label:ctx=>`${ctx.raw.toFixed(1)}%/1000h`}}},
     scales:{
-      x:{ticks:{color:'#7d8590',font:{size:11},callback:v=>v+'%'},grid:{color:'rgba(48,54,61,.5)'}},
-      y:{ticks:{color:'#e6edf3',font:{size:10,family:'IBM Plex Mono'}},grid:{color:'rgba(48,54,61,.5)'}}
+      x:{ticks:{color:'#5a8fa8',callback:v=>v+'%'},grid:{color:gridColor},
+         title:{display:true,text:'%/1000h',color:'#5a8fa8',font:{size:10}}},
+      y:{ticks:{color:'#e8f4fb',font:{size:9,family:'IBM Plex Mono'}},grid:{color:gridColor}}
     }
   }
 });
 
-// ============ CHART: Evolução Roda Guia ============
-const colors = ['#e05252','#f0b429','#29ABE2'];
+// ======================== CHART: Evolução ========================
+const eColors = ['#e05252','#f0b429','#29ABE2'];
 new Chart(document.getElementById('chartEvol'), {
   type: 'line',
   data: {
     datasets: Object.entries(evolData).map(([tag,d],i)=>({
       label: tag,
-      data: d.h.map((h,j)=>({x:h, y:d.rg_lc[j]})),
-      borderColor: colors[i], backgroundColor: colors[i]+'33',
+      data: d.h.map((h,j)=>({x:h,y:d.rg_lc[j]})),
+      borderColor: eColors[i], backgroundColor: eColors[i]+'22',
       tension: 0.3, pointRadius: 5, borderWidth: 2, fill: false,
     }))
   },
   options: {
     responsive:true,
-    plugins:{legend:{labels:{color:'#e6edf3',font:{size:11,family:'IBM Plex Mono'}}}},
+    plugins:{
+      legend:{labels:{color:'#e8f4fb',font:{size:10,family:'IBM Plex Mono'}}},
+      annotation:{annotations:{
+        line80:{type:'line',yMin:80,yMax:80,borderColor:'#ff4b4b88',borderDash:[4,4],borderWidth:1,
+          label:{display:true,content:'Limite crítico 80%',color:'#e05252',font:{size:9},position:'end'}}
+      }}
+    },
     scales:{
-      x:{type:'linear',ticks:{color:'#7d8590',font:{size:10},callback:v=>v.toLocaleString('pt-BR')+'h'},grid:{color:'rgba(48,54,61,.5)'},title:{display:true,text:'Horímetro',color:'#7d8590'}},
-      y:{ticks:{color:'#7d8590',font:{size:11},callback:v=>v+'%'},grid:{color:'rgba(48,54,61,.5)'},title:{display:true,text:'% Desgaste',color:'#7d8590'},
-        annotations:{line80:{type:'line',yMin:80,yMax:80,borderColor:'#ff4b4b',borderDash:[5,5]}}}
+      x:{type:'linear',ticks:{color:'#5a8fa8',font:{size:9},callback:v=>(v/1000).toFixed(0)+'kh'},grid:{color:gridColor},
+         title:{display:true,text:'Horímetro',color:'#5a8fa8',font:{size:10}}},
+      y:{ticks:{color:'#5a8fa8',callback:v=>v+'%'},grid:{color:gridColor},
+         title:{display:true,text:'% Desgaste Roda Guia LC',color:'#5a8fa8',font:{size:10}},max:120}
     }
   }
 });
 
-// ============ ASSIMETRIA ============
-function renderAsym(containerId, data) {
-  const el = document.getElementById(containerId);
-  if (!data || !data.length) { el.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:8px;">Sem assimetria significativa.</div>'; return; }
+// ======================== CHART: Scatter ========================
+const scatterDs = pvData.tags.map((tag,i) => {
+  const maxW = Math.max(...Object.values(pvData.wear).map(arr=>arr[i]));
+  const s = statusOf(tag);
+  return {tag, h: pvData.horimetro[i], maxW, s};
+});
+new Chart(document.getElementById('chartScatter'), {
+  type: 'scatter',
+  data: {
+    datasets: [{
+      label: 'Equipamentos',
+      data: scatterDs.map(d=>({x:d.h, y:d.maxW, tag:d.tag})),
+      backgroundColor: scatterDs.map(d => d.s==='danger'?'#e05252bb':d.s==='warn'?'#f0b429bb':'#29ABE2bb'),
+      pointRadius: 8,
+    }]
+  },
+  options: {
+    responsive:true,
+    plugins:{
+      legend:{display:false},
+      tooltip:{callbacks:{
+        label: ctx => `${ctx.raw.tag}: ${ctx.raw.y.toFixed(0)}% wear · ${ctx.raw.x.toLocaleString('pt-BR')}h`
+      }}
+    },
+    scales:{
+      x:{ticks:{color:'#5a8fa8',callback:v=>(v/1000).toFixed(0)+'kh'},grid:{color:gridColor},
+         title:{display:true,text:'Horímetro',color:'#5a8fa8',font:{size:10}}},
+      y:{ticks:{color:'#5a8fa8',callback:v=>v+'%'},grid:{color:gridColor},
+         title:{display:true,text:'Desgaste máximo (%)',color:'#5a8fa8',font:{size:10}},max:115}
+    }
+  }
+});
+
+// ======================== ASSIMETRIA ========================
+const asymOrder = ['RODA_GUIA','ELO','SAPATA','MOTRIZ'];
+const asymLabels = {RODA_GUIA:'Roda Guia',ELO:'Elo',SAPATA:'Sapata',MOTRIZ:'Motriz'};
+
+function buildAsymSection(compKey, data) {
+  const div = document.createElement('div');
+  div.className = 'card';
+  div.dataset.comp = compKey;
+  div.style.marginBottom = '16px';
+  const title = document.createElement('div');
+  title.className = 'card-title';
+  title.textContent = asymLabels[compKey];
+  div.appendChild(title);
+  if (!data || !data.length) {
+    div.innerHTML += '<div style="font-size:11px;color:var(--muted);padding:6px">Sem assimetria significativa registrada.</div>';
+    return div;
+  }
   data.forEach(r => {
-    const diff = Math.abs(r.lc - r.lnc).toFixed(1);
-    const col = diff > 20 ? '#e05252' : '#f0b429';
-    el.innerHTML += `
+    const diff = Math.abs(r.lc - r.lnc);
+    const col = diff > 20 ? '#e05252' : diff > 10 ? '#f0b429' : '#29ABE2';
+    const lcColor  = r.lc  > r.lnc ? '#e05252' : '#29ABE2';
+    const lncColor = r.lnc > r.lc  ? '#e05252' : '#29ABE2';
+    div.innerHTML += `
       <div class="asym-row">
-        <span class="asym-tag">${r.tag}</span>
-        <span class="asym-val" style="color:#29ABE2">LC: ${r.lc.toFixed(1)}%</span>
-        <span class="asym-val" style="color:#6dcbee">LNC: ${r.lnc.toFixed(1)}%</span>
-        <span class="asym-diff" style="color:${col}">Δ ${diff}pp</span>
-        <span class="icon">${diff>20?'🔴':'🟡'}</span>
+        <div class="asym-tag">${r.tag}</div>
+        <div class="asym-bars">
+          <div class="asym-side-row">
+            <div class="asym-side-label">LC</div>
+            <div class="asym-bar-bg"><div class="asym-bar-fill" style="width:${Math.min(r.lc,100)}%;background:${lcColor}"></div></div>
+            <div class="asym-val" style="color:${lcColor}">${r.lc.toFixed(1)}%</div>
+          </div>
+          <div class="asym-side-row">
+            <div class="asym-side-label">LNC</div>
+            <div class="asym-bar-bg"><div class="asym-bar-fill" style="width:${Math.min(r.lnc,100)}%;background:${lncColor}"></div></div>
+            <div class="asym-val" style="color:${lncColor}">${r.lnc.toFixed(1)}%</div>
+          </div>
+        </div>
+        <div class="asym-diff" style="color:${col}">Δ ${diff.toFixed(1)}pp</div>
+        <div style="font-size:13px">${diff>20?'🔴':diff>10?'🟡':'🟢'}</div>
       </div>`;
   });
+  return div;
 }
-renderAsym('asymRodaGuia', asymData.RODA_GUIA);
-renderAsym('asymElo', asymData.ELO);
-renderAsym('asymSapata', asymData.SAPATA);
-renderAsym('asymMotriz', asymData.MOTRIZ);
 
-// ============ TABS ============
-function showTab(name) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  event.target.classList.add('active');
-  document.getElementById('page-'+name).classList.add('active');
+const ac = document.getElementById('asymContainer');
+asymOrder.forEach(k => ac.appendChild(buildAsymSection(k, asymData[k])));
+
+function filterAsym(comp, btn) {
+  document.querySelectorAll('.filter-bar .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('#asymContainer .card').forEach(c => {
+    c.style.display = (comp==='all' || c.dataset.comp===comp) ? '' : 'none';
+  });
 }
+
+// Radar: assimetria média por componente
+const radarAvg = asymOrder.map(k => {
+  if (!asymData[k] || !asymData[k].length) return 0;
+  return asymData[k].reduce((s,r) => s + Math.abs(r.lc - r.lnc), 0) / asymData[k].length;
+});
+new Chart(document.getElementById('chartAsymRadar'), {
+  type: 'radar',
+  data: {
+    labels: asymOrder.map(k=>asymLabels[k]),
+    datasets: [{
+      label: 'Δ médio LC vs LNC (pp)',
+      data: radarAvg.map(v=>+v.toFixed(1)),
+      borderColor: '#29ABE2',
+      backgroundColor: 'rgba(41,171,226,.12)',
+      pointBackgroundColor: '#29ABE2',
+      borderWidth: 2,
+    }]
+  },
+  options: {
+    responsive:true,
+    plugins:{legend:{labels:{color:'#5a8fa8',font:{size:10}}}},
+    scales:{r:{
+      ticks:{color:'#5a8fa8',font:{size:9},backdropColor:'transparent'},
+      grid:{color:'rgba(41,171,226,.1)'},
+      angleLines:{color:'rgba(41,171,226,.1)'},
+      pointLabels:{color:'#a8cfe0',font:{size:11}},
+    }}
+  }
+});
+
+// ======================== INSIGHTS PAGE ========================
+const insights = [
+  {
+    sev:'danger', icon:'🔴',
+    title:'1101PF1803 — Roda Guia em colapso iminente',
+    body:'Com 104.2% do limite atingido e horímetro em 51.431h, a Roda Guia LC ultrapassou a faixa segura. Risco de falha catastrófica em operação.',
+    rec:'Parar o equipamento imediatamente. Emitir OS de substituição urgente. Verificar Roda Guia LNC (79.2%).'
+  },
+  {
+    sev:'danger', icon:'🔴',
+    title:'PZ1001SA44 — Desgaste anormal para horímetro baixo',
+    body:'95.8% de desgaste na Roda Guia com apenas 12.380h — taxa 4× superior à média de frota no mesmo horímetro. Possível defeito de fabricação ou aplicação incorreta.',
+    rec:'Inspeção imediata. Investigar causa-raiz: tensionamento, alinhamento ou lote de peça. Comparar com SA43 (13.287h, 10.4% — dentro do normal).'
+  },
+  {
+    sev:'warn', icon:'🟡',
+    title:'PZ1001SA37 — Motriz e Sapata com taxa crítica',
+    body:'Taxa de 68%/1000h na Motriz LC é 2.5× a média da frota. Com 10.806h, os componentes atingirão o limite em menos de 500h ao ritmo atual.',
+    rec:'Reduzir ciclo de inspeção para 200h. Verificar tensão de esteira. Analisar padrão de operação do operador e perfil de piso.'
+  },
+  {
+    sev:'warn', icon:'🟡',
+    title:'PZ1001SA37 — 15 roletes danificados',
+    body:'Maior contagem de roletes danificados da frota (15 unidades na última inspeção). Correlaciona com alta taxa de desgaste de Motriz e Sapata.',
+    rec:'Substituição imediata dos roletes mais desgastados. Verificar alinhamento e lubrificação do conjunto inferior.'
+  },
+  {
+    sev:'warn', icon:'🟡',
+    title:'Assimetria de Sapata — 7 equipamentos afetados',
+    body:'Diferença média LC/LNC de Sapata é a maior entre todos os componentes. SA42 exibe 34.7% (LC) vs 69.4% (LNC) — delta de 34.7pp. Indica condição operacional atípica sistemática.',
+    rec:'Auditoria de tensionamento de esteira em toda a frota. Cruzar com dados de piso e frentes operadas no período.'
+  },
+  {
+    sev:'info', icon:'📊',
+    title:'Padrão de frota — Motriz e Sapata lideram desgaste',
+    body:'Média da frota: Motriz 38.4%, Sapata 27.5%, ROL.INF 35.5%. Bucha e Elo dentro da normalidade (<20% em todos os equipamentos). Roda Guia com alta variância (4.6%–104.2%).',
+    rec:'Foco de inspeção em Motriz e Roda Guia. Considerar programa de life-extension para equipamentos com horímetro >40kh (SA02, SA14, SA15).'
+  },
+];
+
+const ig = document.getElementById('insightGrid');
+insights.forEach(ins => {
+  const d = document.createElement('div');
+  d.className = `insight-card ${ins.sev}`;
+  d.innerHTML = `
+    <div class="insight-severity" style="color:${ins.sev==='danger'?'var(--danger)':ins.sev==='warn'?'var(--warn)':'var(--blue-light)'}">${ins.icon} ${ins.sev.toUpperCase()}</div>
+    <div class="insight-title">${ins.title}</div>
+    <div class="insight-body">${ins.body}</div>
+    <div class="insight-rec">→ ${ins.rec}</div>`;
+  ig.appendChild(d);
+});
+
+// Maintenance plan table
+const plan = [
+  {sem:'Semana 1',tag:'1101PF1803',  acao:'Substituir Roda Guia LC + inspeção LNC',            prio:'IMEDIATO', resp:'Manutenção Central'},
+  {sem:'Semana 1',tag:'PZ1001SA37',  acao:'Substituir 15 roletes danificados + tensão esteira', prio:'URGENTE',  resp:'Equipe de Campo'},
+  {sem:'Semana 2',tag:'PZ1001SA44',  acao:'Substituir Roda Guia LC/LNC + causa-raiz',           prio:'URGENTE',  resp:'Manutenção Central'},
+  {sem:'Semana 3',tag:'PZ1001SA15',  acao:'Inspeção Roda Guia (67.1%) + plano de troca',        prio:'ALTO',     resp:'Equipe de Campo'},
+  {sem:'Semana 4',tag:'PZ1001SA37',  acao:'Monitorar Motriz e Sapata LC, ajustar tensão',       prio:'MÉDIO',    resp:'Inspetor Rotina'},
+  {sem:'Semana 4',tag:'1101PF1601',  acao:'Monitorar Roda Guia LC (62.5%) + roletes (12)',      prio:'MÉDIO',    resp:'Inspetor Rotina'},
+];
+const tp = document.getElementById('tablePlan');
+tp.innerHTML = `<tr><th>Semana</th><th>TAG</th><th>Ação</th><th>Prioridade</th><th>Responsável</th></tr>`;
+plan.forEach(r => {
+  const col = r.prio==='IMEDIATO'?'#e05252':r.prio==='URGENTE'?'#ff7040':r.prio==='ALTO'?'#f0b429':'#5a8fa8';
+  tp.innerHTML += `<tr>
+    <td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${r.sem}</td>
+    <td><span class="tag-pill">${r.tag}</span></td>
+    <td style="font-size:12px;color:var(--text2)">${r.acao}</td>
+    <td><span class="badge" style="background:${col}18;color:${col};border-color:${col}50">${r.prio}</span></td>
+    <td style="font-size:11px;color:var(--muted)">${r.resp}</td>
+  </tr>`;
+});
+
+// ======================== SAP PAGE ========================
+// Update header counters
+const sapCount = sapDemands.length;
+document.getElementById('sapCounter').textContent = sapCount;
+document.getElementById('headerSapBadge').textContent = `${sapCount} SAP`;
+document.getElementById('kpiSapValue').textContent = sapCount;
+document.getElementById('kpiSapDelta').textContent = `${sapDemands.filter(d=>d.priority.short==='P1').length} P1 · ${sapDemands.filter(d=>d.priority.short==='P2').length} P2 · ${sapDemands.filter(d=>d.priority.short==='P3').length} P3`;
+
+// Summary row
+const sapByPriority = {
+  P1: sapDemands.filter(d=>d.priority.short==='P1'),
+  P2: sapDemands.filter(d=>d.priority.short==='P2'),
+  P3: sapDemands.filter(d=>d.priority.short==='P3'),
+};
+const sapSummaryDefs = [
+  {key:'P1',label:'P1 — Abrir Hoje',   color:'#e05252', desc:'≥ 90% de desgaste'},
+  {key:'P2',label:'P2 — Esta Semana',  color:'#f0b429', desc:'80–90% de desgaste'},
+  {key:'P3',label:'P3 — Em 30 dias',   color:'#29ABE2', desc:'70–80% de desgaste'},
+];
+const sumRow = document.getElementById('sapSummaryRow');
+sapSummaryDefs.forEach(def => {
+  const n = sapByPriority[def.key].length;
+  sumRow.innerHTML += `
+    <div style="background:${def.color}0f;border:1px solid ${def.color}44;border-radius:8px;padding:14px 18px;">
+      <div style="font-size:10px;color:${def.color};font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">${def.label}</div>
+      <div style="font-size:28px;font-weight:700;font-family:var(--mono);color:${def.color}">${n}</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">${def.desc}</div>
+    </div>`;
+});
+sumRow.innerHTML += `
+  <div style="background:rgba(41,193,138,.06);border:1px solid rgba(41,193,138,.25);border-radius:8px;padding:14px 18px;">
+    <div style="font-size:10px;color:var(--ok);font-family:var(--mono);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px">Total Demandas</div>
+    <div style="font-size:28px;font-weight:700;font-family:var(--mono);color:var(--ok)">${sapCount}</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:4px">componentes · ${[...new Set(sapDemands.map(d=>d.tag))].length} equipamentos</div>
+  </div>`;
+
+// Main SAP table
+const sapTbl = document.getElementById('sapMainTable');
+sapTbl.innerHTML = `<tr>
+  <th>#</th><th>TAG</th><th>Componente</th><th>Desgaste</th>
+  <th>Horímetro</th><th>Prioridade</th><th>Ação no SAP</th>
+</tr>`;
+sapDemands.forEach((d,idx) => {
+  const col = d.priority.color;
+  sapTbl.innerHTML += `<tr>
+    <td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${String(idx+1).padStart(2,'0')}</td>
+    <td><span class="tag-pill">${d.tag}</span></td>
+    <td style="color:var(--text2);font-size:12px">${d.comp}</td>
+    <td>
+      <div class="wear-bar-wrap">
+        <div class="wear-bar-bg" style="position:relative">
+          <div class="wear-bar-fill" style="width:${Math.min(d.pct,100)}%;background:${col}"></div>
+          <div style="position:absolute;top:0;bottom:0;left:70%;width:1px;background:rgba(240,180,41,.8)"></div>
+        </div>
+        <div class="wear-pct" style="color:${col}">${d.pct.toFixed(1)}%</div>
+      </div>
+    </td>
+    <td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${d.horim.toLocaleString('pt-BR')}h</td>
+    <td><span class="sap-badge" style="background:${col}18;color:${col};border:1px solid ${col}55">${d.priority.short} · ${d.priority.label.split('—')[1].trim()}</span></td>
+    <td style="font-size:11px;color:var(--text2)">Criar OS de Substituição — ${d.comp}</td>
+  </tr>`;
+});
+
+// Chart: demands by component
+const compCount = {};
+sapDemands.forEach(d => { compCount[d.comp] = (compCount[d.comp]||0)+1; });
+const compEntries = Object.entries(compCount).sort((a,b)=>b[1]-a[1]);
+new Chart(document.getElementById('chartSapComp'), {
+  type:'bar',
+  data:{
+    labels: compEntries.map(([k])=>k),
+    datasets:[{
+      data: compEntries.map(([,v])=>v),
+      backgroundColor: compEntries.map(([k]) => {
+        if (k==='Roda Guia') return '#e05252'; if (k==='Motriz') return '#f0b429';
+        return '#29ABE2';
+      }),
+      borderRadius:4, borderSkipped:false,
+    }]
+  },
+  options:{
+    responsive:true, plugins:{legend:{display:false}},
+    scales:{
+      x:{ticks:{color:'#5a8fa8',font:{size:10}},grid:{color:gridColor}},
+      y:{ticks:{color:'#5a8fa8',stepSize:1},grid:{color:gridColor},
+         title:{display:true,text:'Nº de demandas SAP',color:'#5a8fa8',font:{size:10}}}
+    }
+  }
+});
+
+// Chart: urgency donut
+new Chart(document.getElementById('chartSapUrgencia'), {
+  type:'doughnut',
+  data:{
+    labels:['P1 — Abrir Hoje','P2 — Esta Semana','P3 — Em 30 dias'],
+    datasets:[{
+      data:[sapByPriority.P1.length, sapByPriority.P2.length, sapByPriority.P3.length],
+      backgroundColor:['#e05252','#f0b429','#29ABE2'],
+      borderColor: 'var(--surface)',
+      borderWidth: 3,
+    }]
+  },
+  options:{
+    responsive:true, cutout:'65%',
+    plugins:{legend:{labels:{color:'#a8cfe0',font:{size:11,family:'IBM Plex Mono'}},position:'bottom'},
+      tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${ctx.raw} OS`}}}
+  }
+});
+
+// Export CSV
+function exportSapCSV() {
+  const rows = [['#','TAG','Componente','Desgaste_%','Horimetro_h','Prioridade','Acao_SAP']];
+  sapDemands.forEach((d,i) => {
+    rows.push([i+1, d.tag, d.comp, d.pct.toFixed(1), d.horim, d.priority.label, `Criar OS Substituicao - ${d.comp}`]);
+  });
+  const csv = rows.map(r=>r.join(';')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'demandas_sap_fev2026.csv';
+  a.click();
+}
+
+// ======================== TABS ========================
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    tab.classList.add('active');
+    const name = tab.dataset.tab;
+    // SAP page lives in a separate .main wrapper
+    if (name === 'sap') {
+      document.querySelector('.main').style.display = 'none';
+      document.getElementById('sap-main').style.display = 'block';
+      document.getElementById('page-sap').classList.add('active');
+    } else {
+      document.querySelector('.main').style.display = 'block';
+      document.getElementById('sap-main').style.display = 'none';
+      document.getElementById('page-' + name).classList.add('active');
+    }
+  });
+});
 </script>
 </body>
 </html>
