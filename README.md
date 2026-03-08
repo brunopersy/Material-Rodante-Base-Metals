@@ -4,8 +4,9 @@ Este dashboard foi desenvolvido para apoiar analistas técnicos na gestão do de
 Frota coberta: 16 equipamentos — Pit Viper DR416i e FlexiROC D65
 Período de dados: Agosto/2025 a Fevereiro/2026
 Componentes monitorados: Roda Guia, Elo, Motriz, Roletes Superior/Inferior, Sapata, Bucha, Passo da Esteira
-🖥️ Funcionalidades
-5 abas analíticas:
+
+#🖥️ Funcionalidades#
+#5 abas analíticas:#
 1. Visão Geral
 
 KPIs da frota: equipamentos críticos, em atenção e normais
